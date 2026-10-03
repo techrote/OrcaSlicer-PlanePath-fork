@@ -1,12 +1,18 @@
 #include <catch2/catch_all.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
+#include <memory>
+#include <set>
+#include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "libslic3r/Fill/FillPlanePath.hpp"
 #include "libslic3r/PrintConfig.hpp"
+#include "libslic3r/Surface.hpp"
 
 using namespace Slic3r;
 
@@ -19,12 +25,20 @@ class TestableHilbertCurve : public FillHilbertCurve
 public:
     Points generate_points(double resolution, double smooth_factor = 0., coord_t max_coordinate = 7)
     {
+        return generate_points(0, 0, max_coordinate, max_coordinate, resolution, smooth_factor);
+    }
+
+    Points generate_points(coord_t min_x, coord_t min_y, coord_t max_x, coord_t max_y,
+                           double resolution, double smooth_factor = 0.)
+    {
         InfillPolylineOutput output(output_scale);
         FillParams params;
         params.smooth_factor = smooth_factor;
-        FillHilbertCurve::generate(0, 0, max_coordinate, max_coordinate, resolution, params, output);
+        FillHilbertCurve::generate(min_x, min_y, max_x, max_y, resolution, params, output);
         return std::move(output.result());
     }
+
+    bool centered_value() const { return centered(); }
 };
 
 class TestableOctagramSpiral : public FillOctagramSpiral
@@ -38,7 +52,69 @@ public:
         FillOctagramSpiral::generate(-max_coordinate, -max_coordinate, max_coordinate, max_coordinate, resolution, params, output);
         return std::move(output.result());
     }
+
+    bool centered_value() const { return centered(); }
 };
+
+class TestableArchimedeanChords : public FillArchimedeanChords
+{
+public:
+    bool centered_value() const { return centered(); }
+};
+
+class OutputModeProbe : public FillPlanePath
+{
+public:
+    Fill *clone() const override { return new OutputModeProbe(*this); }
+
+    bool run_for(ExtrusionRole role)
+    {
+        m_saw_clipping_output = false;
+        spacing = 1.;
+        overlap = 0.5;
+        angle = float(-M_PI / 2.);
+        fixed_angle = true;
+
+        Points square{
+            Point::new_scale(-5., -5.),
+            Point::new_scale( 5., -5.),
+            Point::new_scale( 5.,  5.),
+            Point::new_scale(-5.,  5.)
+        };
+        ExPolygon expolygon(square);
+        set_bounding_box(expolygon.contour.bounding_box());
+
+        FillParams params;
+        params.density = 1.f;
+        params.extrusion_role = role;
+        Surface surface(stInternal, expolygon);
+        (void)fill_surface(&surface, params);
+        return m_saw_clipping_output;
+    }
+
+protected:
+    bool centered() const override { return false; }
+
+    void generate(coord_t min_x, coord_t min_y, coord_t max_x, coord_t max_y,
+                  const double, InfillPolylineOutput &output) override
+    {
+        m_saw_clipping_output = output.clips();
+        output.add_point({double(min_x), double(min_y)});
+        output.add_point({double(max_x), double(max_y)});
+    }
+
+private:
+    bool m_saw_clipping_output { false };
+};
+
+Points scaled_points(const std::vector<std::pair<coord_t, coord_t>> &grid, coord_t dx = 0, coord_t dy = 0)
+{
+    Points out;
+    out.reserve(grid.size());
+    for (const auto &[x, y] : grid)
+        out.emplace_back(coord_t((x + dx) * output_scale), coord_t((y + dy) * output_scale));
+    return out;
+}
 
 // Cosine of the sharpest turn of a path, 1 meaning it has no turn at all.
 double sharpest_turn_cosine(const Points &points)
@@ -76,6 +152,132 @@ double discrete_curvature_at(const Points &points, const Point &point)
 }
 
 } // namespace
+
+
+TEST_CASE("Native Hilbert raw path matches golden power-of-two fixtures", "[FillPlanePath][PlanePathConformance]")
+{
+    const std::vector<std::pair<coord_t, coord_t>> order_1{
+        {0, 0}, {0, 1}, {1, 1}, {1, 0}
+    };
+    const std::vector<std::pair<coord_t, coord_t>> order_2{
+        {0, 0}, {0, 1}, {1, 1}, {1, 0},
+        {2, 0}, {3, 0}, {3, 1}, {2, 1},
+        {2, 2}, {3, 2}, {3, 3}, {2, 3},
+        {1, 3}, {1, 2}, {0, 2}, {0, 3}
+    };
+
+    struct Fixture {
+        coord_t min_x;
+        coord_t min_y;
+        coord_t max_x;
+        coord_t max_y;
+        double resolution;
+        const std::vector<std::pair<coord_t, coord_t>> *golden;
+    };
+    const std::array<Fixture, 5> fixtures{{
+        { 0,  0, 1, 1, 0.5,   &order_1},
+        { 0,  0, 2, 1, 0.125, &order_2},
+        { 0,  0, 3, 3, 0.001, &order_2},
+        {-2,  3, 1, 4, 0.25,  &order_2},
+        {-2, -3, 1, 0, 1.0,   &order_2}
+    }};
+
+    for (const Fixture &fixture : fixtures) {
+        CAPTURE(fixture.min_x, fixture.min_y, fixture.max_x, fixture.max_y, fixture.resolution);
+        const Points actual = TestableHilbertCurve().generate_points(
+            fixture.min_x, fixture.min_y, fixture.max_x, fixture.max_y, fixture.resolution);
+        const Points expected = scaled_points(*fixture.golden, fixture.min_x, fixture.min_y);
+        REQUIRE(actual == expected);
+    }
+}
+
+TEST_CASE("Native Hilbert raw coordinates are independent of smoothing resolution", "[FillPlanePath][PlanePathConformance]")
+{
+    const Points coarse = TestableHilbertCurve().generate_points(1.0, 0., 7);
+    const Points fine   = TestableHilbertCurve().generate_points(0.0001, 0., 7);
+    REQUIRE(coarse == fine);
+}
+
+TEST_CASE("Native Hilbert raw path is a unit-step Hamiltonian traversal", "[FillPlanePath][PlanePathConformance]")
+{
+    struct Fixture {
+        coord_t max_coordinate;
+        size_t side;
+        coord_t end_x;
+        coord_t end_y;
+    };
+    const std::array<Fixture, 3> fixtures{{{1, 2, 1, 0}, {3, 4, 0, 3}, {7, 8, 7, 0}}};
+
+    for (const Fixture &fixture : fixtures) {
+        CAPTURE(fixture.max_coordinate, fixture.side);
+        const Points points = TestableHilbertCurve().generate_points(0.0125, 0., fixture.max_coordinate);
+        REQUIRE(points.size() == fixture.side * fixture.side);
+        REQUIRE(points.front() == Point(0, 0));
+        REQUIRE(points.back() == Point(coord_t(fixture.end_x * output_scale), coord_t(fixture.end_y * output_scale)));
+
+        std::set<std::pair<coord_t, coord_t>> visited;
+        for (size_t i = 0; i < points.size(); ++i) {
+            const Point &point = points[i];
+            REQUIRE(point.x() >= 0);
+            REQUIRE(point.y() >= 0);
+            REQUIRE(point.x() <= coord_t((fixture.side - 1) * output_scale));
+            REQUIRE(point.y() <= coord_t((fixture.side - 1) * output_scale));
+            REQUIRE(point.x() % coord_t(output_scale) == 0);
+            REQUIRE(point.y() % coord_t(output_scale) == 0);
+            visited.emplace(point.x(), point.y());
+            if (i > 0) {
+                const Point delta = points[i] - points[i - 1];
+                REQUIRE(std::abs(delta.x()) + std::abs(delta.y()) == coord_t(output_scale));
+            }
+        }
+        REQUIRE(visited.size() == points.size());
+    }
+}
+
+TEST_CASE("Native PlanePath capability decisions are frozen before trait refactoring", "[FillPlanePath][PlanePathConformance]")
+{
+    STATIC_REQUIRE(std::is_trivially_copyable_v<FillParams>);
+
+    TestableHilbertCurve hilbert;
+    TestableArchimedeanChords archimedean;
+    TestableOctagramSpiral octagram;
+
+    CHECK_FALSE(hilbert.centered_value());
+    CHECK(archimedean.centered_value());
+    CHECK(octagram.centered_value());
+
+    struct PatternDecision {
+        InfillPattern pattern;
+        bool smoothable;
+    };
+    const std::array<PatternDecision, 3> patterns{{
+        {ipHilbertCurve, true},
+        {ipArchimedeanChords, false},
+        {ipOctagramSpiral, true}
+    }};
+
+    for (const PatternDecision &decision : patterns) {
+        CAPTURE(decision.pattern);
+        CHECK(is_separable_infill_pattern(decision.pattern));
+        CHECK(is_smoothable_infill_pattern(decision.pattern) == decision.smoothable);
+        CHECK_FALSE(Fill::use_bridge_flow(decision.pattern));
+
+        std::unique_ptr<Fill> filler(Fill::new_from_type(decision.pattern));
+        REQUIRE(filler != nullptr);
+        CHECK_FALSE(filler->is_self_crossing());
+        CHECK_FALSE(filler->no_sort());
+        CHECK_FALSE(filler->use_bridge_flow());
+    }
+}
+
+TEST_CASE("Sparse PlanePath selects the clipping output while solid PlanePath does not", "[FillPlanePath][PlanePathConformance]")
+{
+    OutputModeProbe sparse;
+    OutputModeProbe solid;
+
+    CHECK(sparse.run_for(erInternalInfill));
+    CHECK_FALSE(solid.run_for(erSolidInfill));
+}
 
 TEST_CASE("Hilbert curve exposes a smoothing factor", "[FillPlanePath]")
 {
