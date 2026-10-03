@@ -4,6 +4,7 @@
 #include <cmath>
 #include <map>
 #include <numeric>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -1297,6 +1298,204 @@ TEST_CASE("Smoothing multiline lightning infill keeps its outlines connected", "
     // The outlines are still rounded.
     REQUIRE(smooth.point_count > sharp.point_count);
     REQUIRE(smooth.sharp_turns < sharp.sharp_turns);
+}
+
+
+struct SolidPlanePathSnapshot {
+    size_t path_count { 0 };
+    size_t point_count { 0 };
+    uint64_t sequence { 14695981039346656037ull };
+    std::set<ExtrusionRole> roles;
+};
+
+static SolidPlanePathSnapshot solid_plane_path_snapshot(const Print &print)
+{
+    SolidPlanePathSnapshot shape;
+
+    auto account = [&shape](const ExtrusionPath &path) {
+        if (!solid_role(path.role()))
+            return;
+        shape.roles.insert(path.role());
+        ++shape.path_count;
+        shape.sequence = (shape.sequence ^ uint64_t(path.role())) * 1099511628211ull;
+        const Points3 &pts = path.polyline.points;
+        shape.point_count += pts.size();
+        for (const Point3 &pt : pts)
+            for (const coord_t coordinate : {pt.x(), pt.y(), pt.z()})
+                shape.sequence = (shape.sequence ^ uint64_t(coordinate)) * 1099511628211ull;
+    };
+
+    for (const Layer *layer : print.objects().front()->layers())
+        for (const LayerRegion *region : layer->regions())
+            for (const ExtrusionEntity *entity : region->fills.flatten().entities) {
+                if (const auto *path = dynamic_cast<const ExtrusionPath *>(entity))
+                    account(*path);
+                else if (const auto *multi = dynamic_cast<const ExtrusionMultiPath *>(entity))
+                    for (const ExtrusionPath &path : multi->paths)
+                        account(path);
+                else if (const auto *loop = dynamic_cast<const ExtrusionLoop *>(entity))
+                    for (const ExtrusionPath &path : loop->paths)
+                        account(path);
+            }
+    return shape;
+}
+
+TEST_CASE("Solid native PlanePath does not inherit sparse smoothing", "[Fill][PlanePathConformance]")
+{
+    auto slice = [](const std::string &smooth_factor) {
+        Print print;
+        Slic3r::Test::init_and_process_print(
+            {Slic3r::Test::cube(12)}, print,
+            {{"sparse_infill_density", "100%"},
+             {"sparse_infill_smooth_factor", smooth_factor},
+             {"internal_solid_infill_pattern", "hilbertcurve"},
+             {"top_surface_pattern", "hilbertcurve"},
+             {"bottom_surface_pattern", "hilbertcurve"},
+             {"top_shell_layers", 2},
+             {"bottom_shell_layers", 2},
+             {"top_shell_thickness", 0},
+             {"bottom_shell_thickness", 0},
+             {"layer_height", 0.2},
+             {"initial_layer_print_height", 0.2}});
+        return solid_plane_path_snapshot(print);
+    };
+
+    const SolidPlanePathSnapshot sharp  = slice("0%");
+    const SolidPlanePathSnapshot smooth = slice("100%");
+
+    REQUIRE(sharp.path_count > 0);
+    REQUIRE(sharp.roles.count(erTopSolidInfill) == 1);
+    REQUIRE(sharp.roles.count(erBottomSurface) == 1);
+    REQUIRE(sharp.roles.count(erSolidInfill) == 1);
+    CHECK(smooth.roles == sharp.roles);
+    CHECK(smooth.path_count == sharp.path_count);
+    CHECK(smooth.point_count == sharp.point_count);
+    CHECK(smooth.sequence == sharp.sequence);
+}
+
+TEST_CASE("Native Hilbert final extrusion order remains optimizable by default", "[Fill][PlanePathConformance]")
+{
+    Print print;
+    Slic3r::Test::init_and_process_print(
+        {Slic3r::Test::cube(12)}, print,
+        {{"sparse_infill_density", "100%"},
+         {"internal_solid_infill_pattern", "hilbertcurve"},
+         {"top_surface_pattern", "hilbertcurve"},
+         {"bottom_surface_pattern", "hilbertcurve"},
+         {"top_shell_layers", 2},
+         {"bottom_shell_layers", 2},
+         {"top_shell_thickness", 0},
+         {"bottom_shell_thickness", 0},
+         {"layer_height", 0.2},
+         {"initial_layer_print_height", 0.2}});
+
+    size_t checked_collections = 0;
+    size_t checked_entities = 0;
+    for (const Layer *layer : print.objects().front()->layers())
+        for (const LayerRegion *region : layer->regions())
+            for (const ExtrusionEntity *entity : region->fills.entities) {
+                const auto *collection = dynamic_cast<const ExtrusionEntityCollection *>(entity);
+                REQUIRE(collection != nullptr);
+                const ExtrusionEntityCollection flat = collection->flatten();
+                bool contains_solid = false;
+                for (const ExtrusionEntity *child : flat.entities)
+                    contains_solid |= solid_role(child->role());
+                if (!contains_solid)
+                    continue;
+
+                CHECK_FALSE(collection->no_sort);
+                ++checked_collections;
+                for (const ExtrusionEntity *child : flat.entities)
+                    if (solid_role(child->role())) {
+                        CHECK(child->can_reverse());
+                        ++checked_entities;
+                    }
+            }
+
+    REQUIRE(checked_collections > 0);
+    REQUIRE(checked_entities > 0);
+}
+
+TEST_CASE("SurfaceFillParams batching keeps distinct native PlanePath patterns separate", "[Fill][PlanePathConformance]")
+{
+    auto config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({{"sparse_infill_density", "100%"},
+                                   {"internal_solid_infill_pattern", "hilbertcurve"},
+                                   {"top_shell_layers", 2},
+                                   {"bottom_shell_layers", 2},
+                                   {"top_shell_thickness", 0},
+                                   {"bottom_shell_thickness", 0},
+                                   {"layer_height", 0.2},
+                                   {"initial_layer_print_height", 0.2}});
+
+    Print print;
+    Model model;
+    Slic3r::Test::init_print({make_cube(12, 12, 2)}, print, model, config, nullptr, false);
+    TriangleMesh second = make_cube(12, 12, 2);
+    second.translate(20, 0, 0);
+    ModelVolume *volume = model.objects.front()->add_volume(std::move(second));
+    volume->config.set_key_value("internal_solid_infill_pattern", new ConfigOptionEnum<InfillPattern>(ipOctagramSpiral));
+    print.apply(model, config);
+    print.process();
+
+    std::map<InfillPattern, std::pair<size_t, size_t>> observed;
+    for (const Layer *layer : print.objects().front()->layers()) {
+        for (const LayerRegion *region : layer->regions()) {
+            const InfillPattern pattern = region->region().config().internal_solid_infill_pattern.value;
+            if (pattern != ipHilbertCurve && pattern != ipOctagramSpiral)
+                continue;
+            Polylines paths;
+            for (const ExtrusionEntity *entity : region->fills.flatten().entities)
+                if (entity->role() == erSolidInfill)
+                    entity->collect_polylines(paths);
+            if (paths.empty())
+                continue;
+            auto &shape = observed[pattern];
+            shape.first += paths.size();
+            for (const Polyline &path : paths)
+                shape.second += path.size();
+        }
+    }
+
+    REQUIRE(observed.count(ipHilbertCurve) == 1);
+    REQUIRE(observed.count(ipOctagramSpiral) == 1);
+    REQUIRE(observed[ipHilbertCurve].first > 0);
+    REQUIRE(observed[ipOctagramSpiral].first > 0);
+    CHECK(observed[ipHilbertCurve] != observed[ipOctagramSpiral]);
+}
+
+TEST_CASE("Narrow internal solid detection substitutes the configured PlanePath", "[Fill][PlanePathConformance]")
+{
+    auto slice = [](const std::string &pattern, bool detect_narrow) {
+        Print print;
+        Slic3r::Test::init_and_process_print(
+            {make_cube(0.6, 12, 2)}, print,
+            {{"wall_loops", 0},
+             {"sparse_infill_density", "100%"},
+             {"internal_solid_infill_pattern", pattern},
+             {"detect_narrow_internal_solid_infill", detect_narrow},
+             {"top_shell_layers", 2},
+             {"bottom_shell_layers", 2},
+             {"top_shell_thickness", 0},
+             {"bottom_shell_thickness", 0},
+             {"layer_height", 0.2},
+             {"initial_layer_print_height", 0.2}});
+        return solid_plane_path_snapshot(print);
+    };
+
+    const SolidPlanePathSnapshot hilbert_native  = slice("hilbertcurve", false);
+    const SolidPlanePathSnapshot octagram_native = slice("octagramspiral", false);
+    const SolidPlanePathSnapshot hilbert_narrow  = slice("hilbertcurve", true);
+    const SolidPlanePathSnapshot octagram_narrow = slice("octagramspiral", true);
+
+    REQUIRE(hilbert_native.path_count > 0);
+    REQUIRE(octagram_native.path_count > 0);
+    REQUIRE(hilbert_narrow.path_count > 0);
+    REQUIRE(octagram_narrow.path_count > 0);
+    CHECK(hilbert_native.sequence != octagram_native.sequence);
+    CHECK(hilbert_narrow.path_count == octagram_narrow.path_count);
+    CHECK(hilbert_narrow.point_count == octagram_narrow.point_count);
+    CHECK(hilbert_narrow.sequence == octagram_narrow.sequence);
 }
 
 TEST_CASE("Sparse plane-path anchors match the printed infill", "[Fill][InternalBridge][Regression]")

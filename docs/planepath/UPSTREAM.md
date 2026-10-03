@@ -22,6 +22,14 @@ git fetch upstream
 
 If `upstream` already exists, verify it points to the URL above.
 
+## External regression-suite pin
+
+The Linux build runs `OrcaSlicer/orca-test-repo` as an additional regression gate. That suite is versioned independently from OrcaSlicer, so PlanePath pins an exact compatible revision in `.github/workflows/build_orca.yml` rather than cloning the test repository's moving `main`.
+
+For the PP-001 Orca baseline `23c77f15cfa38696d89552344d887ce938ac39d4`, the pinned external-suite revision is `f87619dfc7a4754c88b51e8d53c780b67887b47c` (the latest suite commit predating the 2026-09-18 baseline selection).
+
+When syncing Orca upstream, review and advance this pin deliberately as part of the synchronization PR, then require the pinned suite to pass against the new Orca source. This prevents a later external-test change from retroactively breaking an otherwise unchanged historical baseline while preserving the external gate.
+
 ## Routine upstream refresh
 
 Use a dedicated branch and merge upstream rather than rewriting PlanePath history:

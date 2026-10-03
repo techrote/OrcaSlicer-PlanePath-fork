@@ -1,31 +1,37 @@
 #!/usr/bin/env bash
 # Focused PlanePath regression gate.
-# Uses the libslic3r_tests binary already produced by Orca's normal build jobs.
+# Uses test binaries already produced by Orca's normal build jobs.
 set -euo pipefail
 
 TEST_DIR="${1:-build/tests}"
 CONFIG="${2:-Release}"
 
-candidates=(
-  "${TEST_DIR}/libslic3r/${CONFIG}/libslic3r_tests"
-  "${TEST_DIR}/libslic3r/${CONFIG}/libslic3r_tests.exe"
-  "${TEST_DIR}/libslic3r/libslic3r_tests"
-  "${TEST_DIR}/libslic3r/libslic3r_tests.exe"
-)
+find_test_exe() {
+  local suite="$1"
+  local candidates=(
+    "${TEST_DIR}/${suite}/${CONFIG}/${suite}_tests"
+    "${TEST_DIR}/${suite}/${CONFIG}/${suite}_tests.exe"
+    "${TEST_DIR}/${suite}/${suite}_tests"
+    "${TEST_DIR}/${suite}/${suite}_tests.exe"
+  )
 
-exe=""
-for candidate in "${candidates[@]}"; do
-  if [[ -f "${candidate}" ]]; then
-    exe="${candidate}"
-    break
-  fi
-done
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
 
-if [[ -z "${exe}" ]]; then
-  echo "error: libslic3r_tests not found under '${TEST_DIR}' (config '${CONFIG}')" >&2
+  echo "error: ${suite}_tests not found under '${TEST_DIR}' (config '${CONFIG}')" >&2
   printf 'checked: %s\n' "${candidates[@]}" >&2
-  exit 2
-fi
+  return 2
+}
 
-echo "PlanePath focused gate: ${exe} [FillPlanePath]"
-"${exe}" '[FillPlanePath]' --order decl
+libslic3r_exe="$(find_test_exe libslic3r)"
+echo "PlanePath focused generator gate: ${libslic3r_exe} [FillPlanePath]"
+"${libslic3r_exe}" '[FillPlanePath]' --order decl
+
+fff_print_exe="$(find_test_exe fff_print)"
+echo "PlanePath focused integration gate: ${fff_print_exe} [PlanePathConformance]"
+"${fff_print_exe}" '[PlanePathConformance]' --order decl

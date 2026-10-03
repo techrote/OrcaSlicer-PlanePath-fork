@@ -657,9 +657,14 @@ jobs:
         timeout-minutes: 20
         shell: bash
         run: |
+          # Keep the external regression suite reproducible with the Orca source baseline.
+          # Advance this revision deliberately when syncing Orca upstream; do not follow the
+          # test repository's moving main, which may start asserting newer Orca semantics.
+          orca_test_repo_rev="f87619dfc7a4754c88b51e8d53c780b67887b47c"
           test_repo_dir="${{ runner.temp }}/orca-test-repo"
           rm -rf "$test_repo_dir"
-          git clone --depth 1 https://github.com/OrcaSlicer/orca-test-repo.git "$test_repo_dir"
+          git clone https://github.com/OrcaSlicer/orca-test-repo.git "$test_repo_dir"
+          git -C "$test_repo_dir" checkout --detach "$orca_test_repo_rev"
           python3 "$test_repo_dir/run_test.py" "${{ github.workspace }}/build/package/bin/orca-slicer"
 
       - name: Build orca_custom_preset_tests

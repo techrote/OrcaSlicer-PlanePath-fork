@@ -168,7 +168,7 @@ static DynamicPrintConfig internal_bridge_config(const std::string &pattern, int
     return config;
 }
 
-TEST_CASE("Internal bridge angles follow the lower infill layer and model rotation", "[PrintObject][InternalBridge][Regression]")
+TEST_CASE("Internal bridge angles follow the lower infill layer and model rotation", "[PrintObject][InternalBridge][Regression][PlanePathConformance]")
 {
     const std::string pattern = GENERATE("hilbertcurve", "octagramspiral");
     // Orca: Cover both a central line (odd counts) and offset pairs (even counts).
@@ -203,7 +203,7 @@ TEST_CASE("Internal bridge angles follow the lower infill layer and model rotati
     REQUIRE(bridges > 0);
 }
 
-TEST_CASE("Turning infill does not replace the anchors of another region", "[PrintObject][InternalBridge][Regression]")
+TEST_CASE("Turning infill does not replace the anchors of another region", "[PrintObject][InternalBridge][Regression][PlanePathConformance]")
 {
     // Orca: Keep the right-hand region fixed while changing the left-hand pattern in the
     // same object. Its bridge areas must be independent of a previous candidate's anchors.
@@ -243,7 +243,7 @@ TEST_CASE("Turning infill does not replace the anchors of another region", "[Pri
     REQUIRE(total_area > 0.);
 }
 
-TEST_CASE("Rounded internal bridges end on printed support", "[PrintObject][InternalBridge][Regression]")
+TEST_CASE("Rounded internal bridges end on printed support", "[PrintObject][InternalBridge][Regression][PlanePathConformance]")
 {
     const std::string pattern = GENERATE("hilbertcurve", "octagramspiral");
     const bool separated = GENERATE(false, true);
@@ -298,6 +298,46 @@ TEST_CASE("Rounded internal bridges end on printed support", "[PrintObject][Inte
             }
     }
     REQUIRE(checked > 0);
+}
+
+
+TEST_CASE("Bridge fills ignore configured solid PlanePath selections", "[PrintObject][InternalBridge][PlanePathConformance]")
+{
+    auto bridge_shape = [](const std::string &solid_pattern) {
+        auto config = internal_bridge_config("rectilinear", 1);
+        config.set_deserialize_strict({{"top_surface_pattern", solid_pattern},
+                                       {"bottom_surface_pattern", solid_pattern},
+                                       {"internal_solid_infill_pattern", solid_pattern}});
+
+        Print print;
+        Model model;
+        init_print({internal_bridge_step()}, print, model, config, nullptr, false);
+        print.process();
+
+        size_t count = 0;
+        uint64_t digest = 14695981039346656037ull;
+        for (const Layer *layer : print.objects().front()->layers())
+            for (const LayerRegion *region : layer->regions())
+                for (const ExtrusionEntity *entity : region->fills.flatten().entities) {
+                    if (entity->role() != erInternalBridgeInfill)
+                        continue;
+                    Polylines paths;
+                    entity->collect_polylines(paths);
+                    for (const Polyline &path : paths) {
+                        ++count;
+                        for (const Point &point : path.points)
+                            for (const coord_t coordinate : {point.x(), point.y()})
+                                digest = (digest ^ uint64_t(coordinate)) * 1099511628211ull;
+                    }
+                }
+        return std::pair<size_t, uint64_t>{count, digest};
+    };
+
+    const auto hilbert = bridge_shape("hilbertcurve");
+    const auto octagram = bridge_shape("octagramspiral");
+    REQUIRE(hilbert.first > 0);
+    REQUIRE(octagram.first > 0);
+    CHECK(hilbert == octagram);
 }
 
 TEST_CASE("Enabling separated infill recomputes body origins", "[PrintObject][InternalBridge][Regression]")
