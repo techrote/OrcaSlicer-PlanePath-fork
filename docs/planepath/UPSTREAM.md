@@ -13,11 +13,17 @@ The historical PP-001 and PP-002 result trees were recreated byte-for-byte in th
 
 ## Current synchronized upstream
 
-The 2026-10-03 migration port is based on OrcaSlicer `main` commit:
+The true-fork migration was initially ported onto OrcaSlicer `00bb4202fe50ca625e59c6fcbec573a2887d22ed`. A post-migration synchronization then advances the fork to OrcaSlicer `main` commit:
 
-`00bb4202fe50ca625e59c6fcbec573a2887d22ed`
+`8a6377f087e3f422275cd788339e1fa64a280f50`
 
-This is 428 upstream commits newer than the historical pinned base.
+The three additional upstream commits are:
+
+- `84657ff11ea231ef717b76eb0a941ba64aa3ec4e` — Add Missing Includes Across the Remaining Sources and Tests (#16071)
+- `c86e33db6dd96f20ef1fd92e1018269b95ee0c31` — Make the orca-wxwidgets skill find the wx source on Windows and in worktrees
+- `8a6377f087e3f422275cd788339e1fa64a280f50` — Add Missing Includes Across src/libslic3r (#16068)
+
+None of the 41 PlanePath-modified paths changed across these three commits.
 
 ## Local remote setup
 
@@ -34,11 +40,11 @@ If `upstream` already exists, verify it points to the URL above.
 
 The Linux build runs `OrcaSlicer/orca-test-repo` as an additional regression gate. PlanePath pins an exact suite revision so a later test-repository change cannot retroactively break an unchanged source baseline.
 
-For the 2026-10-03 Orca catch-up, the pin is:
+For the 2026-10-03 Orca catch-up, the pin remains:
 
 `fcc70a676c708660511f0720557773738fa74ecd`
 
-This was `orca-test-repo/main` at migration preparation time. Future Orca synchronization must review and deliberately advance this pin together with the source update, then require the pinned suite to pass.
+That was still `orca-test-repo/main` when the post-migration sync was prepared, so no pin change was required for the three-commit follow-up. Future Orca synchronization must review and deliberately advance this pin together with the source update, then require the pinned suite to pass.
 
 ## Routine upstream refresh
 

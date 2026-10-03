@@ -21,9 +21,11 @@ The two migrated trees were reconstructed in the fork's Git object store and ver
 
 ## October 2026 upstream catch-up
 
-The current migration port is based on OrcaSlicer `main` commit `00bb4202fe50ca625e59c6fcbec573a2887d22ed`.
+The initial true-fork migration port was based on OrcaSlicer `main` commit `00bb4202fe50ca625e59c6fcbec573a2887d22ed` and was merged by fork PR #2 as `e71fec82f43285567debc4d2b05d51fb47c0820b`.
 
-PlanePath-specific tests, planning/RAG material, and fork-safe CI policy are reapplied on top of that current upstream tree. Upstream changes win by default except where PlanePath has an intentional invariant or fork-safety divergence.
+Immediately after that cutover, OrcaSlicer advanced by three commits. The post-migration synchronization branch merges upstream commit `8a6377f087e3f422275cd788339e1fa64a280f50` as a real second Git parent. None of the 41 PlanePath-modified paths changed in those three upstream commits, so no PlanePath semantic conflict resolution was required.
+
+PlanePath-specific tests, planning/RAG material, and fork-safe CI policy remain layered on current upstream. Upstream changes win by default except where PlanePath has an intentional invariant or fork-safety divergence.
 
 ## Workflow boundary
 
