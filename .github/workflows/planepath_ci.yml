@@ -1,0 +1,43 @@
+name: PlanePath CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deps/**'
+      - 'deps_src/**'
+      - 'src/**'
+      - 'tests/**'
+      - '**/CMakeLists.txt'
+      - 'version.inc'
+      - 'resources/**'
+      - 'scripts/planepath/**'
+      - '.github/workflows/planepath_ci.yml'
+      - '.github/workflows/build_check_cache.yml'
+      - '.github/workflows/build_deps.yml'
+      - '.github/workflows/build_orca.yml'
+      - '.github/workflows/unit_tests.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: planepath-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_linux_x86_64:
+    name: Build Linux x86_64
+    uses: ./.github/workflows/build_check_cache.yml
+    with:
+      os: ubuntu-24.04
+      build-deps-only: false
+      force-build: false
+    secrets: inherit
+
+  unit_tests_linux_x86_64:
+    name: Unit tests Linux x86_64
+    needs: build_linux_x86_64
+    if: ${{ !cancelled() && success() }}
+    uses: ./.github/workflows/unit_tests.yml
+    with:
+      os: ubuntu-24.04
+      artifact: ${{ github.sha }}-tests-linux-x86_64
