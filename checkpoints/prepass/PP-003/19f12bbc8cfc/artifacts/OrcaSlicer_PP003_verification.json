@@ -1,0 +1,18 @@
+{
+  "archive": "OrcaSlicer_PP003_source_prepass_e71fec82.zip",
+  "sha256": "d7273947298bbf937f51d0c9c45a83bfad196cc8453d4e89482442671b5ebe00",
+  "bytes": 46993,
+  "archive_files": 32,
+  "manifest_records": 31,
+  "crc": "PASS",
+  "duplicate_paths": false,
+  "unsafe_paths": false,
+  "extracted_manifest_before": "PASS: 31 SHA-256 file records; no unlisted files (manifest excludes itself).",
+  "extracted_probe_rerun": "{\"status\": \"PASS\", \"native_patterns\": 31, \"cpp_predicate_checks\": 500, \"context_cases\": 267840, \"invalid_enum_cases\": 4}\nPASS: 5 literal PP-002 golden cases; 3 Hamiltonian domains; reversed-path mutant rejected\nPASS: 310 bridge boundary decisions; 3 native order-kernel distinctions\nPASS\nALL OFFLINE PREPASS CHECKS PASSED; native Orca tests were NOT executed.",
+  "extracted_manifest_after": "PASS: 31 SHA-256 file records; no unlisted files (manifest excludes itself).",
+  "verified_utc": "2026-10-04T21:12:44.821376+00:00",
+  "assessed_commit": "e71fec82f43285567debc4d2b05d51fb47c0820b",
+  "native_orca_tests_executed": false,
+  "full_repository_scan_executed": false,
+  "extracted_decision_cases": 267840
+}

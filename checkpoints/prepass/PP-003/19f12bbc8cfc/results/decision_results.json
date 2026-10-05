@@ -1,0 +1,155 @@
+{
+  "status": "PASS",
+  "native_patterns": 31,
+  "cpp_predicate_checks": 500,
+  "cpp_json_fields_compared": 403,
+  "context_cases": 267840,
+  "decision_values_per_case": 10,
+  "mutations": [
+    {
+      "name": "hilbert_center",
+      "detected": true,
+      "witness": [
+        "top",
+        "model",
+        false,
+        false,
+        1,
+        0.5,
+        false,
+        "default",
+        false,
+        [
+          "default",
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "arch_smoothing",
+      "detected": true,
+      "witness": [
+        "sparse",
+        "surface",
+        false,
+        false,
+        1,
+        0.5,
+        false,
+        "default",
+        false,
+        [
+          "default",
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "grid_reversal",
+      "detected": true,
+      "witness": [
+        "sparse",
+        "surface",
+        false,
+        false,
+        1,
+        0.5,
+        false,
+        "default",
+        false,
+        [
+          "default",
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "solid_bridge_trait",
+      "detected": true,
+      "witness": [
+        "sparse",
+        "surface",
+        false,
+        false,
+        1,
+        0.5,
+        false,
+        "default",
+        false,
+        [
+          "default",
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "quarter_separable",
+      "detected": true,
+      "witness": [
+        "sparse",
+        "surface",
+        true,
+        false,
+        1,
+        0.5,
+        false,
+        "default",
+        false,
+        [
+          "default",
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "forced_order_support",
+      "detected": true,
+      "witness": [
+        "top",
+        "surface",
+        false,
+        false,
+        1,
+        0.5,
+        false,
+        "default",
+        false,
+        [
+          "inward",
+          0.4
+        ]
+      ]
+    }
+  ],
+  "stateful_sequence": [
+    {
+      "pattern": "ipArchimedeanChords",
+      "role": "top",
+      "result_order": "outward",
+      "result_smoothing": 0.0
+    },
+    {
+      "pattern": "ipHilbertCurve",
+      "role": "top",
+      "result_order": "outward",
+      "result_smoothing": 0.0
+    },
+    {
+      "pattern": "ipHilbertCurve",
+      "role": "sparse",
+      "result_order": "outward",
+      "result_smoothing": 0.75
+    },
+    {
+      "pattern": "ipHilbertCurve",
+      "role": "solid",
+      "result_order": "outward",
+      "result_smoothing": 0.75
+    }
+  ],
+  "invalid_enum_cases": 4,
+  "scope": "Decision extraction/transcription only; no Orca factory, clipping, native test suite or G-code execution",
+  "compiler": "c++ (Debian 14.2.0-19) 14.2.0",
+  "python": "3.13.5",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41"
+}
