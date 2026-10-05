@@ -1,0 +1,6 @@
+{
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "/mnt/data/pp005_embedding_prepass/proposed/ScriptRuntimeAPI.hpp:1:9: warning: #pragma once in main file\n    1 | #pragma once\n      |         ^~~~\n",
+  "scope": "C++17 header syntax only"
+}

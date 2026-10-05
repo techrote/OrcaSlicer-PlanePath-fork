@@ -1,0 +1,4 @@
+Read-only urllib download failed: urllib.error.URLError: <urlopen error [Errno -3] Temporary failure in name resolution>
+container.download of https://www.lua.org/ftp/lua-5.5.1.tar.gz also failed.
+GitHub connector and web text browsing remained available.
+No release archive was obtained; the published SHA256 is not a locally verified downloaded-archive hash.

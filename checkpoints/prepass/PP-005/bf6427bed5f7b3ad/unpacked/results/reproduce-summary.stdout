@@ -1,0 +1,74 @@
+[
+  {
+    "name": "gcc",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-pthread",
+      "-O2",
+      "/mnt/data/pp005_embedding_prepass/probe/probe.cpp",
+      "/usr/lib/x86_64-linux-gnu/liblua5.4.so.0.0.0",
+      "-o",
+      "/mnt/data/pp005_embedding_prepass/results/reproduced/probe-gcc"
+    ],
+    "compile_returncode": 0,
+    "run_returncode": 0,
+    "cases": 33,
+    "stderr_bytes": 0,
+    "runtime_sha256": "4c51276430a3d9e130169bff107c441f12a4cfe0b75ebb59c73cda8ad9f622ba",
+    "binary_sha256": "21f8d5d62f8efddc209e16438804577f2e84dc78be78e1eec9f0ed20cb4cb6b9",
+    "coverage": "local 5.4.7 surrogate"
+  },
+  {
+    "name": "clang",
+    "compile_command": [
+      "clang++",
+      "-std=c++17",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-pthread",
+      "-O2",
+      "/mnt/data/pp005_embedding_prepass/probe/probe.cpp",
+      "/usr/lib/x86_64-linux-gnu/liblua5.4.so.0.0.0",
+      "-o",
+      "/mnt/data/pp005_embedding_prepass/results/reproduced/probe-clang"
+    ],
+    "compile_returncode": 0,
+    "run_returncode": 0,
+    "cases": 33,
+    "stderr_bytes": 0,
+    "runtime_sha256": "4c51276430a3d9e130169bff107c441f12a4cfe0b75ebb59c73cda8ad9f622ba",
+    "binary_sha256": "24a11833a0be9db8e89e9b25d962758ad752515e61d3d681f60e085decaf6648",
+    "coverage": "local 5.4.7 surrogate"
+  },
+  {
+    "name": "sanitized",
+    "compile_command": [
+      "clang++",
+      "-std=c++17",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-pthread",
+      "-O1",
+      "-g",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "/mnt/data/pp005_embedding_prepass/probe/probe.cpp",
+      "/usr/lib/x86_64-linux-gnu/liblua5.4.so.0.0.0",
+      "-o",
+      "/mnt/data/pp005_embedding_prepass/results/reproduced/probe-sanitized"
+    ],
+    "compile_returncode": 0,
+    "run_returncode": 0,
+    "cases": 33,
+    "stderr_bytes": 0,
+    "runtime_sha256": "4c51276430a3d9e130169bff107c441f12a4cfe0b75ebb59c73cda8ad9f622ba",
+    "binary_sha256": "be91bba7f63d8b249733c336b7c7b187d01b460c068da16c212f191e480110f8",
+    "coverage": "host wrapper instrumented; prebuilt Lua core NOT instrumented"
+  }
+]
