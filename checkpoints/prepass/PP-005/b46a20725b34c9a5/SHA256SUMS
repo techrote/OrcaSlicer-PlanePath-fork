@@ -1,0 +1,15 @@
+# Canonical SHA-256 identities retained by this checkpoint.
+# `SOURCE_PAYLOAD.sha256` is the sorted path/SHA-256 manifest for the full original payload.
+# `unpacked/MANIFEST.sha256` is the archive-internal SHA-256 manifest.
+# The binary ZIP and compiled probe executables are not duplicated in Git; see ARTIFACTS.md.
+
+bf6427bed5f7b3adfaef72853c86bd10f87ea862a889e7f2a3a2706e63904f9a  SOURCE_PAYLOAD.sha256
+882fb9a27a89cdb4ee01fe4b6b35c8777c902d404162296152fc9a8146e9b547  unpacked/MANIFEST.sha256
+319b56f2d8e3c882f1eacd1c259c6a0759b2f9b7645585cecf9f12f02d0b6ebb  artifacts/PP-005-embedding-prepass-e71fec82.zip.sha256
+3a537377c51bea21fd73fc53b6fd382e352df2b7b7d70da8dabf689c273e7caa  artifacts/PP-005-embedding-prepass-verification.json
+
+# Exact outer ZIP identity (authoritative original artifact, verified before publication):
+b1b0a100f2f6280311b89b411a10ec12b369392684eaa6ee31a8bdb25b5fe49c  PP-005-embedding-prepass-e71fec82.zip
+
+# Full-payload manifest hash / deterministic payload ID:
+b46a20725b34c9a5d23a7586d93f78f72b775f1f7d261e6e5670014484b8025b  sorted-full-payload-manifest

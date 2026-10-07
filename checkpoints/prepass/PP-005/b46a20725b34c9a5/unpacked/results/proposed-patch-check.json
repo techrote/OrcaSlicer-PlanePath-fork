@@ -1,0 +1,12 @@
+{
+  "command": [
+    "git",
+    "apply",
+    "--check",
+    "proposed-dependency.patch"
+  ],
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "",
+  "scope": "Empty isolated directory: additive recipe file patch parses/applies. NOT a full Orca checkout, exact upstream Lua patch application, or build."
+}

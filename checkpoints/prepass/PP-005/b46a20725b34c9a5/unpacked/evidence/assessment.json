@@ -1,0 +1,24 @@
+{
+  "repository": "techrote/OrcaSlicer-PlanePath-fork",
+  "issue": 8,
+  "assessed_commit": "e71fec82f43285567debc4d2b05d51fb47c0820b",
+  "assessed_tree": "efe88c014f4129cd1ca847f84687f2a1ce162fad",
+  "issue_state_observed": "open",
+  "issue_comments_count_observed": 0,
+  "source_mode": "GitHub connector text and official Lua web source; no local source checkout",
+  "local_source_download_success": false,
+  "recommended_runtime": "Lua 5.5.1 + upstream 0b29f408433e92953cc72b1d3e06c7ac8139e439, profile 5.5.1-pp1",
+  "lua_archive_publisher_sha256": "1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce",
+  "lua_archive_bytes_verified_locally": false,
+  "actual_probe_runtime": "Debian liblua5.4-0:amd64 5.4.7-1+b2",
+  "remote_writes": 0,
+  "windows_runs": 0,
+  "exact_pin_runs": 0,
+  "scope_excludes": [
+    "#6 fill traits",
+    "sentinel",
+    "geometry adapter",
+    "workflow actions",
+    "production implementation"
+  ]
+}

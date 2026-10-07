@@ -1,0 +1,3 @@
+b46a20725b34c9a5d23a7586d93f78f72b775f1f7d261e6e5670014484b8025b
+
+Derived as SHA-256 of the sorted `SHA256  path` manifest for the exact original prepass payload: outer ZIP, ZIP sidecar, verification JSON, and all 63 extracted archive members. The first 16 hex characters form the checkpoint short payload ID.

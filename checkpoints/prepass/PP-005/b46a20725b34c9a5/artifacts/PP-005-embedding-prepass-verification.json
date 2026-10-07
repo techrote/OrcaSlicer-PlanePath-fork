@@ -1,0 +1,89 @@
+{
+  "archive_members": 63,
+  "sha256_records": 62,
+  "crc": "pass",
+  "membership": "pass",
+  "sha256": "pass",
+  "paths": "pass",
+  "zip_filename": "PP-005-embedding-prepass-e71fec82.zip",
+  "zip_bytes": 2543274,
+  "zip_sha256": "b1b0a100f2f6280311b89b411a10ec12b369392684eaa6ee31a8bdb25b5fe49c",
+  "verified_utc": "2026-10-04T21:03:24.012513+00:00",
+  "extracted_rebuild_returncode": 0,
+  "extracted_probe_builds": [
+    {
+      "name": "gcc",
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-pthread",
+        "-O2",
+        "/mnt/data/pp005_verification_workspace/extracted/probe/probe.cpp",
+        "/usr/lib/x86_64-linux-gnu/liblua5.4.so.0.0.0",
+        "-o",
+        "/mnt/data/pp005_verification_workspace/extracted-rerun/probe-gcc"
+      ],
+      "compile_returncode": 0,
+      "run_returncode": 0,
+      "cases": 33,
+      "stderr_bytes": 0,
+      "runtime_sha256": "4c51276430a3d9e130169bff107c441f12a4cfe0b75ebb59c73cda8ad9f622ba",
+      "binary_sha256": "21f8d5d62f8efddc209e16438804577f2e84dc78be78e1eec9f0ed20cb4cb6b9",
+      "coverage": "local 5.4.7 surrogate"
+    },
+    {
+      "name": "clang",
+      "compile_command": [
+        "clang++",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-pthread",
+        "-O2",
+        "/mnt/data/pp005_verification_workspace/extracted/probe/probe.cpp",
+        "/usr/lib/x86_64-linux-gnu/liblua5.4.so.0.0.0",
+        "-o",
+        "/mnt/data/pp005_verification_workspace/extracted-rerun/probe-clang"
+      ],
+      "compile_returncode": 0,
+      "run_returncode": 0,
+      "cases": 33,
+      "stderr_bytes": 0,
+      "runtime_sha256": "4c51276430a3d9e130169bff107c441f12a4cfe0b75ebb59c73cda8ad9f622ba",
+      "binary_sha256": "24a11833a0be9db8e89e9b25d962758ad752515e61d3d681f60e085decaf6648",
+      "coverage": "local 5.4.7 surrogate"
+    },
+    {
+      "name": "sanitized",
+      "compile_command": [
+        "clang++",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-pthread",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "/mnt/data/pp005_verification_workspace/extracted/probe/probe.cpp",
+        "/usr/lib/x86_64-linux-gnu/liblua5.4.so.0.0.0",
+        "-o",
+        "/mnt/data/pp005_verification_workspace/extracted-rerun/probe-sanitized"
+      ],
+      "compile_returncode": 0,
+      "run_returncode": 0,
+      "cases": 33,
+      "stderr_bytes": 0,
+      "runtime_sha256": "4c51276430a3d9e130169bff107c441f12a4cfe0b75ebb59c73cda8ad9f622ba",
+      "binary_sha256": "27b3dda48534d55e726475888c022ce15f931f76bb781634145d7eb6d3339e3b",
+      "coverage": "host wrapper instrumented; prebuilt Lua core NOT instrumented"
+    }
+  ],
+  "exact_pin_tested": false,
+  "windows_tested": false
+}
