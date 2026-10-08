@@ -1,0 +1,179 @@
+diff --git a/deps/Lua/CMakeLists.txt b/deps/Lua/CMakeLists.txt
+new file mode 100644
+--- /dev/null
++++ b/deps/Lua/CMakeLists.txt
+@@ -0,0 +1,49 @@
++cmake_minimum_required(VERSION 3.15)
++project(PlanePathLua VERSION 5.5.1 LANGUAGES C)
++include(GNUInstallDirs)
++include(CMakePackageConfigHelpers)
++set(PLANEPATH_LUA_REVISION "5.5.1-pp1" CACHE STRING "Audited source/build profile")
++# Keep all runtime units in C: do not turn Lua's internal throws into C++ throws.
++# This intentionally omits lua.c, luac.c and ALL standard-library registration units.
++set(lua_core
++    lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c
++    lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c
++    ltm.c lundump.c lvm.c lzio.c lauxlib.c)
++list(TRANSFORM lua_core PREPEND "src/")
++add_library(PlanePathLua STATIC ${lua_core})
++add_library(PlanePathLua::Lua ALIAS PlanePathLua)
++set_target_properties(PlanePathLua PROPERTIES
++    EXPORT_NAME Lua OUTPUT_NAME planepath_lua55 DEBUG_POSTFIX d
++    C_STANDARD 99 C_STANDARD_REQUIRED YES C_EXTENSIONS NO
++    POSITION_INDEPENDENT_CODE ON
++    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
++# Candidate conservative build profile; Windows worker-stack testing remains mandatory.
++target_compile_definitions(PlanePathLua PRIVATE LUAI_MAXSTACK=32768 LUAI_MAXCCALLS=100)
++if(MSVC)
++    target_compile_definitions(PlanePathLua PRIVATE _CRT_SECURE_NO_WARNINGS)
++    target_compile_options(PlanePathLua PRIVATE /fp:precise)
++else()
++    target_compile_options(PlanePathLua PRIVATE -fno-fast-math -ffp-contract=off)
++    if(UNIX)
++        target_link_libraries(PlanePathLua PUBLIC m)
++    endif()
++endif()
++target_include_directories(PlanePathLua PUBLIC
++    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
++    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/planepath-lua-5.5>)
++install(TARGETS PlanePathLua EXPORT PlanePathLuaTargets
++    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
++install(FILES src/lua.h src/luaconf.h src/lauxlib.h
++    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/planepath-lua-5.5)
++install(FILES LICENSE.lua.txt DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/PlanePathLua)
++install(EXPORT PlanePathLuaTargets NAMESPACE PlanePathLua::
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/PlanePathLua)
++configure_package_config_file(PlanePathLuaConfig.cmake.in
++    "${CMAKE_CURRENT_BINARY_DIR}/PlanePathLuaConfig.cmake"
++    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/PlanePathLua)
++write_basic_package_version_file(
++    "${CMAKE_CURRENT_BINARY_DIR}/PlanePathLuaConfigVersion.cmake"
++    VERSION ${PROJECT_VERSION} COMPATIBILITY ExactVersion)
++install(FILES "${CMAKE_CURRENT_BINARY_DIR}/PlanePathLuaConfig.cmake"
++    "${CMAKE_CURRENT_BINARY_DIR}/PlanePathLuaConfigVersion.cmake"
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/PlanePathLua)
+diff --git a/deps/Lua/LICENSE.lua.txt b/deps/Lua/LICENSE.lua.txt
+new file mode 100644
+--- /dev/null
++++ b/deps/Lua/LICENSE.lua.txt
+@@ -0,0 +1,21 @@
++Lua 5.5.1
++Copyright (C) 1994-2026 Lua.org, PUC-Rio.
++
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of this software and associated documentation files (the
++"Software"), to deal in the Software without restriction, including
++without limitation the rights to use, copy, modify, merge, publish,
++distribute, sublicense, and/or sell copies of the Software, and to
++permit persons to whom the Software is furnished to do so, subject to
++the following conditions:
++
++The above copyright notice and this permission notice shall be
++included in all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+diff --git a/deps/Lua/Lua.cmake b/deps/Lua/Lua.cmake
+new file mode 100644
+--- /dev/null
++++ b/deps/Lua/Lua.cmake
+@@ -0,0 +1,15 @@
++# PROPOSED: source-audited, not built against the release in this prepass.
++# Pin: upstream Lua 5.5.1 plus the two-line GC fix identified in PATCHES.md.
++orcaslicer_add_cmake_project(Lua
++    FORWARD_CONFIG
++    URL https://www.lua.org/ftp/lua-5.5.1.tar.gz
++    URL_HASH SHA256=1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce
++    PATCH_COMMAND
++        ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" "<SOURCE_DIR>/CMakeLists.txt"
++        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_LIST_DIR}/PlanePathLuaConfig.cmake.in" "<SOURCE_DIR>/PlanePathLuaConfig.cmake.in"
++        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_LIST_DIR}/LICENSE.lua.txt" "<SOURCE_DIR>/LICENSE.lua.txt"
++        COMMAND ${GIT_EXECUTABLE} -C <SOURCE_DIR> apply
++            "${CMAKE_CURRENT_LIST_DIR}/gc-negative-growth.patch"
++    CMAKE_ARGS
++        -DPLANEPATH_LUA_REVISION=5.5.1-pp1
++)
+diff --git a/deps/Lua/PATCHES.md b/deps/Lua/PATCHES.md
+new file mode 100644
+--- /dev/null
++++ b/deps/Lua/PATCHES.md
+@@ -0,0 +1,25 @@
++# Proposed Lua dependency profile
++
++Base: Lua 5.5.1 official release archive, SHA-256 in Lua.cmake.
++Revision: `5.5.1-pp1` (local packaging/profile identifier, not an upstream version).
++
++`gc-negative-growth.patch` adapts only source-root paths from upstream commit
++`0b29f408433e92953cc72b1d3e06c7ac8139e439`, authored 2026-09-16.
++Primary: https://github.com/lua/lua/commit/0b29f408433e92953cc72b1d3e06c7ac8139e439
++Bug: https://www.lua.org/bugs.html#5.5.1-1
++It guards a negative allocation delta before applying a GC parameter and adds
++an assertion of the parameter-helper precondition. Upstream's regression is
++in `testes/gengc.lua`; retrieve and execute it with an instrumented full test
++interpreter during dependency acceptance, not inside the sandbox allowlist.
++The two production hunks were inspected against the published 5.5.1 source.
++Actual application/build against the tarball was NOT possible here.
++
++The public sandbox does not expose collector controls and stays in default
++incremental mode. This is defense in depth, not a claim that denying that API
++proves every path to the bug unreachable.
++
++C99, static, int64/double, private LUAI_MAXSTACK=32768/LUAI_MAXCCALLS=100,
++no standard-library registration objects, no OS/platform loader options.
++The `lauxlib.c` unit still contains file-related auxiliary APIs; their presence
++in a binary is NOT script authority. The host must never register/use them for
++untrusted source. All source loading is a validated bounded memory buffer.
+diff --git a/deps/Lua/PlanePathLuaConfig.cmake.in b/deps/Lua/PlanePathLuaConfig.cmake.in
+new file mode 100644
+--- /dev/null
++++ b/deps/Lua/PlanePathLuaConfig.cmake.in
+@@ -0,0 +1,15 @@
++@PACKAGE_INIT@
++set(PlanePathLua_REVISION "@PLANEPATH_LUA_REVISION@")
++include("${CMAKE_CURRENT_LIST_DIR}/PlanePathLuaTargets.cmake")
++get_target_property(_pp_configs PlanePathLua::Lua IMPORTED_CONFIGURATIONS)
++# Debug cannot fall back to /MD Release on Windows. A multi-config build can
++# consume a Release-only prefix for Release; selecting Debug then fails during generation rather than mapping to Release.
++set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_DEBUG DEBUG)
++set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_RELEASE RELEASE RELWITHDEBINFO MINSIZEREL)
++set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELWITHDEBINFO RELEASE MINSIZEREL)
++set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_MINSIZEREL MINSIZEREL RELEASE RELWITHDEBINFO)
++if(MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT "DEBUG" IN_LIST _pp_configs)
++    message(FATAL_ERROR "PlanePathLua has no /MDd Debug archive; rebuild the Debug dependency tree")
++endif()
++unset(_pp_configs)
++check_required_components(PlanePathLua)
+diff --git a/deps/Lua/gc-negative-growth.patch b/deps/Lua/gc-negative-growth.patch
+new file mode 100644
+--- /dev/null
++++ b/deps/Lua/gc-negative-growth.patch
+@@ -0,0 +1,24 @@
++diff --git a/src/lgc.c b/src/lgc.c
++--- a/src/lgc.c
+++++ b/src/lgc.c
++@@ -1459,7 +1459,8 @@ static int checkmajorminor (lua_State *L, global_State *g) {
++   if (g->gckind == KGC_GENMAJOR) {  /* generational mode? */
++     l_mem numbytes = gettotalbytes(g);
++     l_mem addedbytes = numbytes - g->GCmajorminor;
++-    l_mem limit = applygcparam(g, MAJORMINOR, addedbytes);
+++    l_mem limit = (addedbytes < 0) ? 0
+++                                   : applygcparam(g, MAJORMINOR, addedbytes);
++     l_mem tobecollected = numbytes - g->GCmarked;
++     if (tobecollected > limit) {
++       atomic2gen(L, g);  /* return to generational mode */
++diff --git a/src/lobject.c b/src/lobject.c
++--- a/src/lobject.c
+++++ b/src/lobject.c
++@@ -89,6 +89,7 @@ lu_byte luaO_codeparam (unsigned int p) {
++ l_mem luaO_applyparam (lu_byte p, l_mem x) {
++   int m = p & 0xF;  /* mantissa */
++   int e = (p >> 4);  /* exponent */
+++  lua_assert(x >= 0);
++   if (e > 0) {  /* normalized? */
++     e--;  /* correct exponent */
++     m += 0x10;  /* correct mantissa; maximum value is 0x1F */

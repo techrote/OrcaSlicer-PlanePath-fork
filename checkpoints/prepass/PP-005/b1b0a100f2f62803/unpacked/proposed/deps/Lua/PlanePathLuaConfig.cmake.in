@@ -1,0 +1,15 @@
+@PACKAGE_INIT@
+set(PlanePathLua_REVISION "@PLANEPATH_LUA_REVISION@")
+include("${CMAKE_CURRENT_LIST_DIR}/PlanePathLuaTargets.cmake")
+get_target_property(_pp_configs PlanePathLua::Lua IMPORTED_CONFIGURATIONS)
+# Debug cannot fall back to /MD Release on Windows. A multi-config build can
+# consume a Release-only prefix for Release; selecting Debug then fails during generation rather than mapping to Release.
+set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_DEBUG DEBUG)
+set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_RELEASE RELEASE RELWITHDEBINFO MINSIZEREL)
+set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELWITHDEBINFO RELEASE MINSIZEREL)
+set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_MINSIZEREL MINSIZEREL RELEASE RELWITHDEBINFO)
+if(MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT "DEBUG" IN_LIST _pp_configs)
+    message(FATAL_ERROR "PlanePathLua has no /MDd Debug archive; rebuild the Debug dependency tree")
+endif()
+unset(_pp_configs)
+check_required_components(PlanePathLua)
