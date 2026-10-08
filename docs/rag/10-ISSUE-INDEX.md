@@ -8,7 +8,7 @@ Canonical mapping between roadmap IDs and GitHub issues.
 | PP-002 | #2 | Native PlanePath/Hilbert conformance harness |
 | PP-003 | #3 | Central fill-pattern traits |
 | PP-004 | #4 | Scripted sentinel + per-context config identity |
-| PP-005 | #5 | Sandboxed deterministic Lua runtime |
+| PP-005 | [Current fork #8](https://github.com/techrote/OrcaSlicer-PlanePath-fork/issues/8) · [legacy #5](https://github.com/techrote/OrcaSlicer-PlanePath/issues/5) | Sandboxed deterministic Lua runtime; [preserved prepass](INDEX.md#preserved-pp-005-prepass) |
 | PP-006 | #6 | Pattern Package ABI v1 + registry |
 | PP-007 | #7 | FillScriptedPlanePath adapter |
 | PP-008 | #8 | Scripted Hilbert parity gate |
