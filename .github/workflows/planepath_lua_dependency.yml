@@ -48,10 +48,20 @@ jobs:
             config: Debug
           - os: macos-15
             config: Release
+          - os: macos-15-intel
+            config: Release
+          - os: windows-11-arm
+            config: Release
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: false
+      - name: Verify bundled Lua licence is byte-identical to source notice
+        shell: pwsh
+        run: |
+          $source = (Get-FileHash deps/Lua/LICENSE.lua.txt -Algorithm SHA256).Hash
+          $shipped = (Get-FileHash resources/licenses/Lua-5.5.1.txt -Algorithm SHA256).Hash
+          if ($source -ne $shipped) { throw "Lua bundled licence notice differs from pinned source" }
       - name: Configure Orca dependency superbuild
         shell: pwsh
         run: |
