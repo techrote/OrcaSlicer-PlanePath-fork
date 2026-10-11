@@ -67,7 +67,7 @@ public:
     ~FillArchimedeanChords() override = default;
 
 protected:
-    bool centered() const override { return true; }
+    bool centered() const override;
     void generate(coord_t min_x, coord_t min_y, coord_t max_x, coord_t max_y, const double resolution, InfillPolylineOutput &output) override;
 };
 
@@ -78,7 +78,7 @@ public:
     ~FillHilbertCurve() override = default;
 
 protected:
-    bool centered() const override { return false; }
+    bool centered() const override;
     void generate(coord_t min_x, coord_t min_y, coord_t max_x, coord_t max_y, const double resolution, InfillPolylineOutput &output) override;
     void generate(coord_t min_x, coord_t min_y, coord_t max_x, coord_t max_y, const double resolution,
                               const FillParams &params, InfillPolylineOutput &output) override;
@@ -91,7 +91,7 @@ public:
     ~FillOctagramSpiral() override = default;
 
 protected:
-    bool centered() const override { return true; }
+    bool centered() const override;
     void generate(coord_t min_x, coord_t min_y, coord_t max_x, coord_t max_y, const double resolution, InfillPolylineOutput &output) override;
     void generate(coord_t min_x, coord_t min_y, coord_t max_x, coord_t max_y, const double resolution,
                               const FillParams &params, InfillPolylineOutput &output) override;
