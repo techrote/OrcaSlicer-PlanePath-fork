@@ -149,6 +149,7 @@ TEST_CASE("Scripted sentinel construction and unresolved failure are explicit", 
     CHECK_FALSE(Fill::use_bridge_flow(ipScriptedPlanePath));
     std::unique_ptr<Fill> filler(Fill::new_from_type(ipScriptedPlanePath));
     REQUIRE(filler);
+    CHECK_THROWS_AS(filler->is_self_crossing(), SlicingError);
     FillParams params;
     STATIC_REQUIRE(std::is_trivially_copyable_v<FillParams>);
     CHECK_THROWS_AS(filler->fill_surface(nullptr, params), SlicingError);

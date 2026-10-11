@@ -39,7 +39,7 @@ class FillUnresolvedScriptedPlanePath final : public Fill
 {
 public:
     Fill *clone() const override { return new FillUnresolvedScriptedPlanePath(*this); }
-    bool is_self_crossing() override { return false; } // No package trait is inferred.
+    bool is_self_crossing() override { throw SlicingError("Scripted PlanePath self-crossing trait is unresolved"); }
     Polylines fill_surface(const Surface *, const FillParams &) override {
         throw SlicingError("Scripted PlanePath pattern unresolved (PP-006/007 required)");
     }
