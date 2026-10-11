@@ -1,7 +1,9 @@
 #include "ScriptRuntime.hpp"
 
+extern "C" {
 #include <lua.h>
 #include <lauxlib.h>
+}
 
 #include <algorithm>
 #include <cmath>
