@@ -17,8 +17,8 @@ public:
 
     // note: updated 3D Honeycomb doesn't need bridge flow because the
     //       pattern is placed on top of previous layers
-    bool use_bridge_flow() const override { return false; }
-    bool is_self_crossing() override { return false; }
+    bool use_bridge_flow() const override { return native_fill_pattern_traits(ip3DHoneycomb).pattern_bridge_flow; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ip3DHoneycomb).self_crossing; }
 
 protected:
 	void _fill_surface_single(
