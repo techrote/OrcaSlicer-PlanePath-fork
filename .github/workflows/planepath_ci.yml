@@ -33,6 +33,20 @@ jobs:
       force-build: false
     secrets: inherit
 
+
+  native_pattern_source_audit:
+    name: Native pattern source audit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan complete checkout for native InfillPattern uses
+        run: python3 scripts/planepath/scan-native-pattern-uses.py --repo . --out pp003-native-pattern-audit.json
+      - name: Upload native pattern audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: pp003-native-pattern-audit
+          path: pp003-native-pattern-audit.json
+
   unit_tests_linux_x86_64:
     name: Unit tests Linux x86_64
     needs: build_linux_x86_64
