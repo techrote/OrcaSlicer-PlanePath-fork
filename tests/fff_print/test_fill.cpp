@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <functional>
 #include <map>
@@ -16,6 +17,7 @@
 #include "libslic3r/Fill/FillAdaptive.hpp"
 #include "libslic3r/Fill/FillGyroid.hpp"
 #include "libslic3r/Flow.hpp"
+#include "libslic3r/Exception.hpp"
 #include "libslic3r/Geometry.hpp"
 #include "libslic3r/IntersectionPoints.hpp"
 #include "libslic3r/Layer.hpp"
@@ -2054,4 +2056,44 @@ TEST_CASE("Sparse plane-path anchors match the printed infill", "[Fill][Internal
     // Orca: Allow only the configured simplification tolerance; infill-scale offsets
     // would hide anchors that no longer coincide with printed lines.
     CHECK(unscale<double>(max_distance) <= config.opt_float("resolution"));
+}
+
+
+// PP-004: exercise the actual print pipeline, not just Fill::new_from_type().
+// Without PP-006/007, no selected scripted context may complete a slice silently.
+TEST_CASE("Selected scripted PlanePath contexts fail slicing explicitly while unresolved", "[Fill][ScriptedPlanePath]")
+{
+    const std::array<std::pair<const char *, const char *>, 3> selections{{
+        {"top_surface_pattern", "top_surface_script_pattern"},
+        {"bottom_surface_pattern", "bottom_surface_script_pattern"},
+        {"internal_solid_infill_pattern", "internal_solid_infill_script_pattern"}
+    }};
+    for (const auto &selection : selections) {
+        CAPTURE(selection.first);
+        DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+        config.set_deserialize_strict({{"sparse_infill_density", "100%"},
+                                       {"top_shell_layers", 2},
+                                       {"bottom_shell_layers", 2},
+                                       {"top_shell_thickness", 0},
+                                       {"bottom_shell_thickness", 0},
+                                       {"layer_height", 0.2},
+                                       {"initial_layer_print_height", 0.2}});
+        config.set_deserialize_strict(selection.first, "scriptedplanepath");
+        config.set(selection.second, std::string("org.example.unresolved"));
+
+        Print print;
+        Model model;
+        Slic3r::Test::init_print({make_cube(12, 12, 2)}, print, model, config, nullptr, false);
+        std::string diagnostic;
+        try {
+            print.process();
+        } catch (const SlicingError &e) {
+            diagnostic = e.what();
+        } catch (const SlicingErrors &errors) {
+            for (const SlicingError &e : errors.errors_)
+                diagnostic += e.what();
+        }
+        CHECK(diagnostic.find("Scripted PlanePath") != std::string::npos);
+        CHECK(diagnostic.find("unresolved") != std::string::npos);
+    }
 }
