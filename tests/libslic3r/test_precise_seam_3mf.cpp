@@ -370,3 +370,47 @@ TEST_CASE("Seam metadata restores only recognized modes on compatible base types
         CHECK_FALSE(helper.config.has("notes"));
     }
 }
+
+
+// PP-004: both project backends must preserve the global three-context selection.
+// BBS also persists generic ModelConfig object/volume overrides; the legacy Prusa
+// importer has a volume-key whitelist (characterized above) and cannot guarantee
+// arbitrary volume options, which is not a new serialization path in PP-004.
+TEST_CASE("Scripted PlanePath config survives 3MF project round trips", "[3mf][ScriptedPlanePath]")
+{
+    const auto backend = GENERATE(Backend::Bbs, Backend::Prusa);
+    Scene source;
+    source.populate(false);
+    for (const char *key : {"top_surface_pattern", "bottom_surface_pattern", "internal_solid_infill_pattern"})
+        source.config.set_key_value(key, new ConfigOptionEnum<InfillPattern>(ipScriptedPlanePath));
+    const std::array<std::pair<const char*,const char*>, 6> values{{
+        {"top_surface_script_pattern", "org.example.moore"},
+        {"top_surface_script_params", R"({"a":1})"},
+        {"bottom_surface_script_pattern", "org.example.peano"},
+        {"bottom_surface_script_params", R"({"b":2})"},
+        {"internal_solid_infill_script_pattern", "org.example.hilbert"},
+        {"internal_solid_infill_script_params", R"({"c":3})"}
+    }};
+    for (const auto &entry : values) {
+        source.config.set_key_value(entry.first, new ConfigOptionString(entry.second));
+        source.model.objects.front()->config.set_key_value(entry.first, new ConfigOptionString(entry.second));
+        source.model.objects.front()->volumes.front()->config.set_key_value(entry.first, new ConfigOptionString(entry.second));
+    }
+    ScopedTemporaryFile file(".3mf");
+    save(file.string(), backend, source);
+    Scene destination;
+    load(file.string(), backend, destination);
+    for (const char *key : {"top_surface_pattern", "bottom_surface_pattern", "internal_solid_infill_pattern"})
+        CHECK(destination.config.opt_enum<InfillPattern>(key) == ipScriptedPlanePath);
+    for (const auto &entry : values) {
+        CHECK(destination.config.opt_string(entry.first) == entry.second);
+        if (backend == Backend::Bbs) {
+            const auto &obj = *destination.model.objects.front();
+            REQUIRE(obj.config.has(entry.first));
+            CHECK(obj.config.get().opt_string(entry.first) == entry.second);
+            const auto &vol = *obj.volumes.front();
+            REQUIRE(vol.config.has(entry.first));
+            CHECK(vol.config.get().opt_string(entry.first) == entry.second);
+        }
+    }
+}
