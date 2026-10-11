@@ -40,7 +40,7 @@ PP-003 routes the legacy separability and smoothing helpers through the descript
 - `ConfigManipulation.cpp`: multiline, surface-centering and surface-order GUI capability lists;
 - `FillBase.cpp`: static pattern bridge-flow lookup.
 
-The filler virtuals remain as compatibility/intrinsic hooks. The all-native trait test compares their current `no_sort`, self-crossing and bridge-flow results with the descriptor for every factory target.
+Concrete filler classes that already declared `no_sort`, self-crossing or explicit bridge-flow overrides now delegate those declarations to the descriptor. Inherited defaults and the abstract/test PlanePath base remain compatibility boundaries rather than gaining stored pattern identity. The all-native trait test compares every current factory target's virtual results with its descriptor row, so any future divergence is explicit.
 
 ## Behavior intentionally preserved
 
@@ -64,7 +64,7 @@ The following existing behavior is also preserved:
 
 ## Whole-checkout audit
 
-`scripts/planepath/scan-native-pattern-uses.py` scans every tracked C/C++/Objective-C source file in an actual checkout. It derives the native enum names from `PrintConfig.hpp` and records every reference, every switch containing native cases and every source line containing multiple native pattern names.
+`scripts/planepath/scan-native-pattern-uses.py` scans every tracked C/C++/Objective-C source file in an actual checkout. It derives the native enum names from `PrintConfig.hpp` and records every reference, every switch containing native cases, every source line containing multiple native pattern names, and any remaining literal `no_sort` / self-crossing / bridge-flow virtual return.
 
 PlanePath CI runs the scanner and uploads `pp003-native-pattern-audit.json`. The inventory is review evidence, not an automatic instruction to replace every switch: factory dispatch, geometry heuristics, effective-pattern substitution and other contextual decisions remain justified native special cases.
 
