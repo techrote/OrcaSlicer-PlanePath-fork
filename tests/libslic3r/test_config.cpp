@@ -1515,6 +1515,10 @@ TEST_CASE("Three scripted PlanePath contexts preserve independent config identit
     DynamicPrintConfig clone(cfg);
     CHECK(clone == cfg);
     CHECK(clone.diff(cfg).empty());
+    clone.set("bottom_surface_script_pattern", std::string("org.example.changed"));
+    CHECK_FALSE(clone.diff(cfg).empty()); // Dirty state detects script changes.
+    clone.apply_only(cfg, {"bottom_surface_script_pattern"});
+    CHECK(clone.diff(cfg).empty()); // Reset restores exact initial state.
     DynamicPrintConfig reload = DynamicPrintConfig::full_print_config();
     for (const auto &field : fields)
         reload.set_deserialize_strict(field.first, cfg.opt_serialize(field.first));

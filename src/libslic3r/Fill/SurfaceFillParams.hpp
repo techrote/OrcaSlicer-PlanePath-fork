@@ -86,7 +86,8 @@ struct SurfaceFillParams
 
 		RETURN_COMPARE_NON_EQUAL(extruder);
 		RETURN_COMPARE_NON_EQUAL_TYPED(unsigned, pattern);
-        RETURN_COMPARE_NON_EQUAL(script_invocation);
+        if (script_invocation < rhs.script_invocation) return true;
+        if (rhs.script_invocation < script_invocation) return false;
 		RETURN_COMPARE_NON_EQUAL(spacing);
 		RETURN_COMPARE_NON_EQUAL(overlap);
 		RETURN_COMPARE_NON_EQUAL(angle);
