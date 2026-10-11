@@ -60,7 +60,7 @@ TEST_CASE("Native fill pattern traits cover every compiled pattern", "[FillPatte
     const std::set<InfillPattern> smoothing_multiline{
         ipGrid, ipTriangles, ipStars, ipCubic
     };
-    const std::set<InfillPattern> sparse_multiline{
+    const std::set<InfillPattern> sparse_multiline_ui{
         ipRectilinear, ipAlignedRectilinear, ipGrid, ipTriangles, ipStars, ipCubic,
         ipAdaptiveCubic, ipQuarterCubic, ipSupportCubic, ipLightning, ipHoneycomb,
         ip3DHoneycomb, ipLateralHoneycomb, ipLateralLattice, ipCrossHatch, ipTpmsD,
@@ -86,7 +86,7 @@ TEST_CASE("Native fill pattern traits cover every compiled pattern", "[FillPatte
         CHECK(traits.self_crossing == contains(self_crossing, pattern));
         CHECK(traits.collection_no_sort == contains(collection_no_sort, pattern));
         CHECK(traits.layer_forbids_reverse == (pattern == ipGrid));
-        CHECK(traits.sparse_multiline == contains(sparse_multiline, pattern));
+        CHECK(traits.sparse_multiline_ui == contains(sparse_multiline_ui, pattern));
         CHECK_FALSE(traits.pattern_bridge_flow);
         CHECK((traits.bridge_anchor_policy == BridgeAnchorPolicy::Turning) == contains(turning_bridge_anchors, pattern));
         CHECK((traits.source_path_ordering == SourcePathOrdering::PlanePathConditionalSurfaceOrder) == contains(plane_paths, pattern));
