@@ -42,7 +42,7 @@ struct FillPatternTraits
     bool self_crossing              { false };
     bool collection_no_sort         { false };
     bool layer_forbids_reverse      { false };
-    bool sparse_multiline           { false };
+    bool sparse_multiline_ui           { false };
     bool pattern_bridge_flow        { false };
 
     constexpr bool is_plane_path() const
