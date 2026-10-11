@@ -6,6 +6,7 @@
 #include "MaterialType.hpp"
 #include "I18N.hpp"
 #include "format.hpp"
+#include "Fill/ScriptedPlanePathIdentity.hpp"
 
 #include "GCode/Thumbnails.hpp"
 #include <numeric>
@@ -280,7 +281,8 @@ static t_config_enum_values s_keys_map_InfillPattern {
     { "spiralinset", ipSpiralInset },
     { "hilbertcurve", ipHilbertCurve },
     { "archimedeanchords", ipArchimedeanChords },
-    { "octagramspiral", ipOctagramSpiral }
+    { "octagramspiral", ipOctagramSpiral },
+    { "scriptedplanepath", ipScriptedPlanePath }
 };
 CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(InfillPattern)
 
@@ -2355,6 +2357,7 @@ void PrintConfigDef::init_fff_params()
     def->enum_values.push_back("hilbertcurve");
     def->enum_values.push_back("archimedeanchords");
     def->enum_values.push_back("octagramspiral");
+    def->enum_values.push_back("scriptedplanepath");
     def->enum_labels.push_back(L("Monotonic"));
     def->enum_labels.push_back(L("Monotonic line"));
     def->enum_labels.push_back(L("Rectilinear"));
@@ -2364,6 +2367,7 @@ void PrintConfigDef::init_fff_params()
     def->enum_labels.push_back(L("Hilbert Curve"));
     def->enum_labels.push_back(L("Archimedean Chords"));
     def->enum_labels.push_back(L("Octagram Spiral"));
+    def->enum_labels.push_back(L("Scripted PlanePath (unresolved)"));
     def->set_default_value(new ConfigOptionEnum<InfillPattern>(ipMonotonicLine));
 
     def = this->add("top_surface_density", coPercent);
@@ -2481,7 +2485,25 @@ void PrintConfigDef::init_fff_params()
     def->enum_values   = def_top_fill_pattern->enum_values;
     def->enum_labels   = def_top_fill_pattern->enum_labels;
     def->set_default_value(new ConfigOptionEnum<InfillPattern>(ipMonotonic));
-    
+
+    // PP-004: independent stable package IDs and parameter JSON strings for solid contexts.
+    // Register as existing Orca config option types to preserve generic preset/3MF mechanisms.
+    auto add_script_companion = [this](const char *key, const char *label, bool parameters) {
+        auto *option = this->add(key, coString);
+        option->label = label;
+        option->category = L("Strength");
+        option->tooltip = parameters ? L("JSON object of scripted PlanePath parameters; execution is unavailable until PP-007.")
+                                     : L("Stable scripted PlanePath package ID; execution is unavailable until PP-007.");
+        option->mode = comAdvanced;
+        option->set_default_value(new ConfigOptionString(parameters ? "{}" : ""));
+    };
+    add_script_companion("top_surface_script_pattern", L("Top scripted pattern ID"), false);
+    add_script_companion("top_surface_script_params", L("Top scripted parameters"), true);
+    add_script_companion("bottom_surface_script_pattern", L("Bottom scripted pattern ID"), false);
+    add_script_companion("bottom_surface_script_params", L("Bottom scripted parameters"), true);
+    add_script_companion("internal_solid_infill_script_pattern", L("Internal-solid scripted pattern ID"), false);
+    add_script_companion("internal_solid_infill_script_params", L("Internal-solid scripted parameters"), true);
+
     def = this->add("outer_wall_line_width", coFloatOrPercent);
     def->label = L("Outer wall");
     def->category = L("Quality");
@@ -11823,6 +11845,27 @@ std::map<std::string, std::string> validate(const FullPrintConfig &cfg, bool und
     if (!print_config_def.get("internal_solid_infill_pattern")->has_enum_value(cfg.internal_solid_infill_pattern.serialize())) {
         error_message.emplace("internal_solid_infill_pattern", L("invalid value ") + cfg.internal_solid_infill_pattern.serialize());
     }
+
+    // Only active selections are validated; dormant fields have no native slicing effect.
+    auto validate_scripted = [&](InfillPattern pattern, const ConfigOptionString &id,
+                                 const ConfigOptionString &json, const char *id_key,
+                                 const char *json_key) {
+        if (pattern != ipScriptedPlanePath) return;
+        if (id.value.empty())
+            error_message.emplace(id_key, "Scripted PlanePath package ID is required");
+        try {
+            (void)canonical_scripted_plane_path_params(json.value);
+        } catch (const std::invalid_argument &e) {
+            error_message.emplace(json_key, std::string("Invalid scripted PlanePath parameters: ") + e.what());
+        }
+    };
+    validate_scripted(cfg.top_surface_pattern.value, cfg.top_surface_script_pattern, cfg.top_surface_script_params,
+                      "top_surface_script_pattern", "top_surface_script_params");
+    validate_scripted(cfg.bottom_surface_pattern.value, cfg.bottom_surface_script_pattern, cfg.bottom_surface_script_params,
+                      "bottom_surface_script_pattern", "bottom_surface_script_params");
+    validate_scripted(cfg.internal_solid_infill_pattern.value, cfg.internal_solid_infill_script_pattern,
+                      cfg.internal_solid_infill_script_params, "internal_solid_infill_script_pattern",
+                      "internal_solid_infill_script_params");
 
     // --skirt-height
     if (cfg.skirt_height < 0) {

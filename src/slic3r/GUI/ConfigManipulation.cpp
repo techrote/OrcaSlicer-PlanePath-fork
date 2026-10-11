@@ -857,7 +857,7 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
 
     // Orca: Only patterns advertising surface-centering controls expose this UI.
     auto is_centered_pattern = [](InfillPattern p) {
-        return native_fill_pattern_traits(p).surface_center_controls;
+        return p != ipScriptedPlanePath && native_fill_pattern_traits(p).surface_center_controls;
     };
     bool is_top_centered    = is_centered_pattern(config->option<ConfigOptionEnum<InfillPattern>>("top_surface_pattern")->value);
     bool is_bottom_centered = is_centered_pattern(config->option<ConfigOptionEnum<InfillPattern>>("bottom_surface_pattern")->value);
@@ -873,7 +873,7 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
     toggle_line("separated_infills", is_internal_infill_separable);
 
     // Fill order is only meaningful for the center-based surface fill patterns; hide it otherwise.
-    auto is_centered_fill = [](InfillPattern p) { return native_fill_pattern_traits(p).surface_fill_order; };
+    auto is_centered_fill = [](InfillPattern p) { return p != ipScriptedPlanePath && native_fill_pattern_traits(p).surface_fill_order; };
     toggle_line("top_surface_fill_order", has_top_shell && is_centered_fill(config->opt_enum<InfillPattern>("top_surface_pattern")));
     toggle_line("bottom_surface_fill_order", has_bottom_shell && is_centered_fill(config->opt_enum<InfillPattern>("bottom_surface_pattern")));
 

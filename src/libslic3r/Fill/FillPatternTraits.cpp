@@ -130,6 +130,7 @@ FillPatternTraits native_fill_pattern_traits(InfillPattern pattern)
         traits.collection_no_sort = true;
         return traits;
 
+    case ipScriptedPlanePath: // Package-dependent traits cannot be native.
     case ipCount:
         break;
     }
@@ -139,12 +140,12 @@ FillPatternTraits native_fill_pattern_traits(InfillPattern pattern)
 
 bool is_separable_infill_pattern(InfillPattern pattern)
 {
-    return native_fill_pattern_traits(pattern).separable;
+    return pattern != ipScriptedPlanePath && native_fill_pattern_traits(pattern).separable;
 }
 
 bool is_smoothable_infill_pattern(InfillPattern pattern, int multiline)
 {
-    return native_fill_pattern_traits(pattern).smoothable(multiline);
+    return pattern != ipScriptedPlanePath && native_fill_pattern_traits(pattern).smoothable(multiline);
 }
 
 } // namespace Slic3r

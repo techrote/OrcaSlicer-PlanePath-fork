@@ -117,6 +117,7 @@ enum InfillPattern : int {
     ipCrossHatch, ipTpmsD, ipTpmsFK, ipGyroid,
     ipConcentric, ipSpiralInset, ipHilbertCurve, ipArchimedeanChords, ipOctagramSpiral,
     ipSupportBase, ipConcentricInternal,
+    ipScriptedPlanePath, // PP-004: appended, native numeric values 0..30 unchanged.
     ipCount,
 };
 
@@ -1278,6 +1279,12 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionPercent,               bottom_surface_density))
     ((ConfigOptionEnum<InfillPattern>,  top_surface_pattern))
     ((ConfigOptionEnum<InfillPattern>,  bottom_surface_pattern))
+    ((ConfigOptionString, top_surface_script_pattern))
+    ((ConfigOptionString, top_surface_script_params))
+    ((ConfigOptionString, bottom_surface_script_pattern))
+    ((ConfigOptionString, bottom_surface_script_params))
+    ((ConfigOptionString, internal_solid_infill_script_pattern))
+    ((ConfigOptionString, internal_solid_infill_script_params))
     ((ConfigOptionEnum<SurfaceFillOrder>, top_surface_fill_order))
     ((ConfigOptionEnum<SurfaceFillOrder>, bottom_surface_fill_order))
     ((ConfigOptionEnum<InfillPattern>, internal_solid_infill_pattern))
