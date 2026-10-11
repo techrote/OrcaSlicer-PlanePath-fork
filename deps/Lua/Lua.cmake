@@ -17,4 +17,5 @@ orcaslicer_add_cmake_project(Lua
             "${CMAKE_CURRENT_LIST_DIR}/gc-negative-growth.patch"
     CMAKE_ARGS
         -DCMAKE_INSTALL_LIBDIR=lib
+        -DPLANEPATH_LUA_SANITIZE:BOOL=${PLANEPATH_LUA_SANITIZE}
 )
