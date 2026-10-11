@@ -455,6 +455,8 @@ coordf_t Layer::get_sparse_infill_max_void_area()
             case ipSupportCubic:
                 max_void_area = std::max(max_void_area, 4.5 * spacing * spacing);
                 break;
+            case ipScriptedPlanePath:
+                throw SlicingError("Scripted PlanePath is not valid for sparse infill");
             default:
                 max_void_area = std::max(max_void_area, spacing * spacing);
                 break;

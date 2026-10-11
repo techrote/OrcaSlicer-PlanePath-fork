@@ -1371,6 +1371,8 @@ Polylines Layer::generate_sparse_infill_polylines_for_anchoring(FillAdaptive::Oc
         // CrossHatch/QuarterCubic fall-through behavior instead of turning this into a whitelist.
         if (surface_fill.params.pattern == ipSupportBase || surface_fill.params.pattern == ipConcentricInternal)
             continue;
+        if (surface_fill.params.pattern == ipScriptedPlanePath)
+            throw SlicingError("Scripted PlanePath is not valid for sparse infill");
         (void) native_fill_pattern_traits(surface_fill.params.pattern); // checked native-domain validation
 
         // Create the filler object.
