@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 3.15)
+project(PlanePathLuaDependencySmoke LANGUAGES C)
+enable_testing()
+
+if(NOT DEFINED PLANEPATH_LUA_PREFIX)
+    message(FATAL_ERROR "Pass PLANEPATH_LUA_PREFIX: the actual Orca dependency install prefix")
+endif()
+set(_lua_config_dir "${PLANEPATH_LUA_PREFIX}/lib/cmake/PlanePathLua")
+find_package(PlanePathLua 5.5.1 EXACT CONFIG REQUIRED
+    PATHS "${_lua_config_dir}" NO_DEFAULT_PATH)
+if(NOT PlanePathLua_REVISION STREQUAL "5.5.1-pp1")
+    message(FATAL_ERROR "Wrong PlanePath Lua source profile: ${PlanePathLua_REVISION}")
+endif()
+get_target_property(_pp_lua_type PlanePathLua::Lua TYPE)
+if(NOT _pp_lua_type STREQUAL "STATIC_LIBRARY")
+    message(FATAL_ERROR "PlanePath Lua must be an imported static archive")
+endif()
+
+add_executable(planepath_lua_dep_smoke main.c)
+target_link_libraries(planepath_lua_dep_smoke PRIVATE PlanePathLua::Lua)
+add_test(NAME planepath_lua_dependency COMMAND planepath_lua_dep_smoke)

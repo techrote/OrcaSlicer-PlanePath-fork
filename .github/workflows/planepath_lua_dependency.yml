@@ -1,0 +1,65 @@
+name: PP-005 pinned Lua dependency
+
+# Targeted proof of the exact Lua source/patch/install and import contract.
+# Full OrcaSlicer CI remains the PR merge gate; these jobs avoid unrelated
+# dependency rebuilds while iterating on the Lua superbuild recipe.
+on:
+  push:
+    branches: ['pp-005-*']
+    paths:
+      - 'deps/Lua/**'
+      - 'deps/CMakeLists.txt'
+      - 'scripts/planepath/lua-dep-smoke/**'
+      - '.github/workflows/planepath_lua_dependency.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deps/Lua/**'
+      - 'deps/CMakeLists.txt'
+      - 'scripts/planepath/lua-dep-smoke/**'
+      - '.github/workflows/planepath_lua_dependency.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pp005-lua-dep-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pinned-static-lua:
+    name: Lua 5.5.1 patched dependency and static import (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Configure Orca dependency superbuild
+        shell: pwsh
+        run: |
+          cmake -S deps -B .pp005-deps -DSLIC3R_CAD=OFF -DCMAKE_INSTALL_LIBDIR=lib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and install the exact patched Lua source
+        shell: pwsh
+        run: |
+          cmake --build .pp005-deps --target dep_Lua --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Configure imported-target smoke test
+        shell: pwsh
+        run: |
+          $prefix = Join-Path $env:GITHUB_WORKSPACE '.pp005-deps/OrcaSlicer_dep/usr/local'
+          cmake -S scripts/planepath/lua-dep-smoke -B .pp005-smoke -DPLANEPATH_LUA_PREFIX="$prefix"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and run the linked static Lua smoke test
+        shell: pwsh
+        run: |
+          cmake --build .pp005-smoke --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir .pp005-smoke -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

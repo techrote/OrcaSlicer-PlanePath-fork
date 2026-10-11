@@ -402,6 +402,8 @@ include(CGAL/CGAL.cmake)
 
 include(NLopt/NLopt.cmake)
 include(libnoise/libnoise.cmake)
+# Pinned static Lua core for the PlanePath sandbox (PP-005).
+include(Lua/Lua.cmake)
 
 include(Draco/Draco.cmake)
 
@@ -490,6 +492,7 @@ set(_dep_list
     ${ZLIB_PKG}
     ${EXPAT_PKG}
     dep_libnoise
+    dep_Lua
     dep_python3
     dep_wxInspector
     dep_FFMPEG

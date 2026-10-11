@@ -265,6 +265,13 @@ modules:
         sha256: 5d577acb4a9918ccb960491482da7a3838f8d363aff47e14d703f19fd84733d4
         dest: external-packages/CGAL
 
+      # Pinned Lua 5.5.1 core for PlanePath (downloaded by flatpak-builder;
+      # then consumed offline from the dependency superbuild's DL_CACHE path).
+      - type: file
+        url: https://www.lua.org/ftp/lua-5.5.1.tar.gz
+        sha256: 1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce
+        dest: external-packages/Lua
+
       # NLopt v2.5.0
       - type: file
         url: https://github.com/stevengj/nlopt/archive/v2.5.0.tar.gz
