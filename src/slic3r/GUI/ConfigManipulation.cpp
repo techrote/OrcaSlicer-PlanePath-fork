@@ -793,7 +793,7 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
 
     // Infill patterns that support multiline infill. This is a GUI capability only;
     // unsupported values are still not clamped in the backend by the trait mechanism.
-    bool have_multiline_infill_pattern = native_fill_pattern_traits(pattern).sparse_multiline;
+    bool have_multiline_infill_pattern = native_fill_pattern_traits(pattern).sparse_multiline_ui;
 
     // gyroid_optimized only applies when the sparse infill pattern is gyroid;
     // hide the whole line otherwise.
