@@ -4,6 +4,7 @@
 
 #include "FillCornerSmoothing.hpp"
 #include "FillPlanePath.hpp"
+#include "FillPatternTraits.hpp"
 
 namespace Slic3r {
 
@@ -192,6 +193,21 @@ void FillPlanePath::_fill_surface_single(
 }
 
 // Follow an Archimedean spiral, in polar coordinates: r=a+b\theta
+bool FillArchimedeanChords::centered() const
+{
+    return native_fill_pattern_traits(ipArchimedeanChords).plane_path_origin == PlanePathOrigin::Centered;
+}
+
+bool FillHilbertCurve::centered() const
+{
+    return native_fill_pattern_traits(ipHilbertCurve).plane_path_origin == PlanePathOrigin::Centered;
+}
+
+bool FillOctagramSpiral::centered() const
+{
+    return native_fill_pattern_traits(ipOctagramSpiral).plane_path_origin == PlanePathOrigin::Centered;
+}
+
 template<typename Output>
 static void generate_archimedean_chords(coord_t min_x, coord_t min_y, coord_t max_x, coord_t max_y, const double resolution, Output &output)
 {
