@@ -43,7 +43,7 @@ jobs:
       - name: Configure Orca dependency superbuild
         shell: pwsh
         run: |
-          cmake -S deps -B .pp005-deps -DSLIC3R_CAD=OFF -DCMAKE_INSTALL_LIBDIR=lib
+          cmake -S deps -B .pp005-deps -DSLIC3R_CAD=OFF -DPLANEPATH_LUA_ONLY=ON -DCMAKE_INSTALL_LIBDIR=lib
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build and install the exact patched Lua source
         shell: pwsh
