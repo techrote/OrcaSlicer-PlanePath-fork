@@ -73,7 +73,7 @@ jobs:
         run: |
           cmake --build .pp005-smoke --config ${{ matrix.config }} --parallel 2
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ctest --test-dir .pp005-smoke -C Release --output-on-failure
+          ctest --test-dir .pp005-smoke -C ${{ matrix.config }} --output-on-failure
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Configure production sandbox tests
@@ -87,7 +87,7 @@ jobs:
         run: |
           cmake --build .pp005-runtime --config ${{ matrix.config }} --parallel 2
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ctest --test-dir .pp005-runtime -C Release --output-on-failure
+          ctest --test-dir .pp005-runtime -C ${{ matrix.config }} --output-on-failure
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   pinned-core-sanitizers:
