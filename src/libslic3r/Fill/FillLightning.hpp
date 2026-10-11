@@ -20,7 +20,7 @@ class Filler : public Slic3r::Fill
 {
 public:
     ~Filler() override = default;
-    bool is_self_crossing() override { return false; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipLightning).self_crossing; }
 
     Generator   *generator { nullptr };
 protected:
@@ -33,7 +33,7 @@ protected:
                               Polylines &polylines_out) override;
 
     // Let the G-code export reoder the infill lines.
-	bool no_sort() const override { return false; }
+	bool no_sort() const override { return native_fill_pattern_traits(ipLightning).collection_no_sort; }
 };
 
 } // namespace FillAdaptive
