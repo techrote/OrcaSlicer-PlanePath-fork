@@ -67,7 +67,7 @@ def switch_blocks(lines: list[str], token_re: re.Pattern[str]) -> list[dict[str,
 
         if saw_open:
             body = "\n".join(lines[start : min(j + 1, len(lines))])
-            cases = sorted(set(re.findall(r"\bcase\s+(ip[A-Za-z0-9_]+)\b", body)))
+            cases = sorted(set(re.findall(r"\bcase\s+(?:(?:Slic3r::)?InfillPattern::)?(ip[A-Za-z0-9_]+)\b", body)))
             if cases:
                 blocks.append(
                     {
