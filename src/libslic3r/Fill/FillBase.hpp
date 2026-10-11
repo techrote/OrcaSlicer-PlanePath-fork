@@ -16,6 +16,7 @@
 #include "../ExPolygon.hpp"
 //BBS: necessary header for new function
 #include "../PrintConfig.hpp"
+#include "FillPatternTraits.hpp"
 #include "../Flow.hpp"
 #include "../ExtrusionEntity.hpp"
 #include "../ExtrusionEntityCollection.hpp"
