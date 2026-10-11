@@ -18,7 +18,7 @@ FillPatternTraits native_fill_pattern_traits(InfillPattern pattern)
     case ipRectilinear:
     case ipAlignedRectilinear:
         traits.separable        = true;
-        traits.sparse_multiline = true;
+        traits.sparse_multiline_ui = true;
         return traits;
 
     case ipZigZag:
@@ -35,7 +35,7 @@ FillPatternTraits native_fill_pattern_traits(InfillPattern pattern)
         traits.self_crossing         = true;
         traits.layer_forbids_reverse = true;
         traits.smoothing_policy      = SmoothingPolicy::MultilineOnly;
-        traits.sparse_multiline      = true;
+        traits.sparse_multiline_ui      = true;
         return traits;
 
     case ipTriangles:
@@ -44,49 +44,49 @@ FillPatternTraits native_fill_pattern_traits(InfillPattern pattern)
         traits.separable        = true;
         traits.self_crossing    = true;
         traits.smoothing_policy = SmoothingPolicy::MultilineOnly;
-        traits.sparse_multiline = true;
+        traits.sparse_multiline_ui = true;
         return traits;
 
     case ipAdaptiveCubic:
     case ipSupportCubic:
         traits.self_crossing    = true;
-        traits.sparse_multiline = true;
+        traits.sparse_multiline_ui = true;
         return traits;
 
     case ipQuarterCubic:
         traits.separable        = true;
-        traits.sparse_multiline = true;
+        traits.sparse_multiline_ui = true;
         return traits;
 
     case ipLightning:
     case ipHoneycomb:
     case ip3DHoneycomb:
         traits.smoothing_policy = SmoothingPolicy::Always;
-        traits.sparse_multiline = true;
+        traits.sparse_multiline_ui = true;
         return traits;
 
     case ipLateralHoneycomb:
     case ipLateralLattice:
         traits.separable        = true;
-        traits.sparse_multiline = true;
+        traits.sparse_multiline_ui = true;
         return traits;
 
     case ipCrossHatch:
         traits.smoothing_policy = SmoothingPolicy::Always;
-        traits.sparse_multiline = true;
+        traits.sparse_multiline_ui = true;
         return traits;
 
     case ipTpmsD:
     case ipTpmsFK:
     case ipGyroid:
-        traits.sparse_multiline = true;
+        traits.sparse_multiline_ui = true;
         return traits;
 
     case ipConcentric:
         traits.surface_fill_order  = true;
         traits.collection_no_sort  = true;
         traits.smoothing_policy    = SmoothingPolicy::Always;
-        traits.sparse_multiline    = true;
+        traits.sparse_multiline_ui    = true;
         return traits;
 
     case ipSpiralInset:
@@ -99,7 +99,7 @@ FillPatternTraits native_fill_pattern_traits(InfillPattern pattern)
         traits.source_path_ordering = SourcePathOrdering::PlanePathConditionalSurfaceOrder;
         traits.separable            = true;
         traits.smoothing_policy     = SmoothingPolicy::Always;
-        traits.sparse_multiline     = true;
+        traits.sparse_multiline_ui     = true;
         traits.bridge_anchor_policy = BridgeAnchorPolicy::Turning;
         return traits;
 
@@ -109,7 +109,7 @@ FillPatternTraits native_fill_pattern_traits(InfillPattern pattern)
         traits.separable               = true;
         traits.surface_center_controls = true;
         traits.surface_fill_order      = true;
-        traits.sparse_multiline        = true;
+        traits.sparse_multiline_ui        = true;
         return traits;
 
     case ipOctagramSpiral:
@@ -119,7 +119,7 @@ FillPatternTraits native_fill_pattern_traits(InfillPattern pattern)
         traits.surface_center_controls = true;
         traits.surface_fill_order      = true;
         traits.smoothing_policy        = SmoothingPolicy::Always;
-        traits.sparse_multiline        = true;
+        traits.sparse_multiline_ui        = true;
         traits.bridge_anchor_policy    = BridgeAnchorPolicy::Turning;
         return traits;
 
