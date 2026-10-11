@@ -72,3 +72,10 @@ These tests guard the externally visible contract around the high-turn sampling/
 2. `fff_print_tests '[PlanePathConformance]'`.
 
 The complete upstream unit suite still runs immediately afterward in the normal PlanePath CI job. No correctness gate is removed or weakened.
+
+
+## PP-003 trait gate
+
+PP-003 adds `tests/libslic3r/test_fill_pattern_traits.cpp` as the compiled-native descriptor gate. It names all 31 current `InfillPattern` values, verifies complete enum coverage and invalid-value rejection, and cross-checks the descriptor against the existing factory/virtual behavior for self-crossing, `no_sort` and pattern-specific bridge flow.
+
+The same table-driven test freezes origin, separability, surface-centering capability, surface-order capability, Grid reversal, sparse multiline, tri-state smoothing, source-order policy and turning bridge-anchor membership. Existing PP-002 geometry tests remain the behavioral authority: the trait test complements them rather than replacing them.
