@@ -97,6 +97,10 @@ def main() -> int:
     references: list[dict[str, object]] = []
     switches: list[dict[str, object]] = []
     multi_pattern_expressions: list[dict[str, object]] = []
+    literal_virtual_capabilities: list[dict[str, object]] = []
+    virtual_literal_re = re.compile(
+        r"\\b(?P<method>no_sort|is_self_crossing|use_bridge_flow)\\s*\\([^)]*\\)[^{;]*\\{[^}]*?return\\s+(?P<value>true|false)\\s*;"
+    )
     scanned = 0
 
     for path in tracked_source_files(root):
@@ -122,6 +126,19 @@ def main() -> int:
             block["path"] = rel
             switches.append(block)
 
+        for match in virtual_literal_re.finditer(text):
+            line_no = text.count("\\n", 0, match.start()) + 1
+            line = lines[line_no - 1].strip() if line_no <= len(lines) else ""
+            literal_virtual_capabilities.append(
+                {
+                    "path": rel,
+                    "line": line_no,
+                    "method": match.group("method"),
+                    "value": match.group("value"),
+                    "text": line,
+                }
+            )
+
     head = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
     inventory = {
         "head": head,
@@ -134,6 +151,8 @@ def main() -> int:
         "switches": switches,
         "multi_pattern_expression_count": len(multi_pattern_expressions),
         "multi_pattern_expressions": multi_pattern_expressions,
+        "literal_virtual_capability_count": len(literal_virtual_capabilities),
+        "literal_virtual_capabilities": literal_virtual_capabilities,
     }
 
     encoded = json.dumps(inventory, indent=2, sort_keys=True)
@@ -146,7 +165,8 @@ def main() -> int:
         "PP-003 source audit: "
         f"{len(patterns)} native patterns; {scanned} source files; "
         f"{len(references)} references; {len(switches)} enum switches; "
-        f"{len(multi_pattern_expressions)} multi-pattern expression lines."
+        f"{len(multi_pattern_expressions)} multi-pattern expression lines; "
+        f"{len(literal_virtual_capabilities)} literal virtual capability returns."
     )
     return 0
 
