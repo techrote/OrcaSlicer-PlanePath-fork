@@ -137,6 +137,39 @@ int main()
         check(r.statistics.vm_live_blocks_after_close==0, "injected allocator fault cleanup");
         check(r.ok() || r.points.empty(), "no partial result after allocator fault");
     }
+    {
+        // C++ bad_alloc must unwind entirely inside the host callback, then
+        // translate to a terminal Lua error without C++/Lua cross-frame unwind.
+        ScriptLimits l;
+        l.fail_output_reservation_at = 1;
+        const auto r = run(good, l);
+        check(r.diagnostic.error == ScriptError::Host,
+              "injected native output allocator exception classified");
+        check(r.points.empty() && !r.statistics.vm_live_blocks_after_close,
+              "native allocation failure discards points and tears down VM");
+        check(run(good).ok(), "native allocator fault does not taint next VM");
+    }
+    {
+        ScriptLimits l;
+        l.instructions = 1000000;
+        auto r = run(
+          "function generate(ctx,out) local function f(n) return 1+f(n+1) end f(0) end", l);
+        check(!r.ok() && r.statistics.vm_live_blocks_after_close == 0,
+              "non-tail recursive stack overflow terminates safely");
+        check(run(good).ok(), "fresh state after deep recursion");
+    }
+    {
+        // Even a large generated callback sequence must remain native-work
+        // bounded, independent from VM instructions and output point quota.
+        ScriptLimits l;
+        l.native_work = 50;
+        l.points = 100000;
+        const auto r = run(
+          "function generate(ctx,out) for i=1,100000 do out:point(1,1) end end", l);
+        check(r.diagnostic.error == ScriptError::NativeWorkBudget,
+              "native callback quota terminates tight output loop");
+        check(r.points.empty(), "native-work violation never commits partial path");
+    }
     check(run(good).ok(), "fresh state recovers after fault injection");
     {
         std::vector<std::thread> workers;
