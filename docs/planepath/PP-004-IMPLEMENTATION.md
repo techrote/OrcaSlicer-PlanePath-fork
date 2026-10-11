@@ -13,8 +13,12 @@ Companion options (flat `ConfigOptionString` members of `PrintRegionConfig`):
 IDs are stable strings, and parameter defaults are `{}`. PP-004 validates active
 parameter payloads as bounded JSON objects and canonicalizes parsed key order using
 the existing nlohmann JSON dependency for **effective invocation equality**. The
-configuration fields are reversible raw strings (unmodified if dormant); per-context
-JSON input is canonically interpreted at batching/slicing time. The future PP-006
+configuration fields are standard string options; syntactically valid parameter objects
+are normalized at strict deserialization and at the generic INI/JSON/3MF
+serialization boundaries. Equivalent parameter objects thus serialize
+identically despite source key order or whitespace. Invalid **dormant** raw
+strings remain reversible without affecting native slicing; once selected
+the sentinel rejects invalid parameters explicitly. The future PP-006
 schema and PP-014 immutable package/version/hash identity remain deferred.
 
 The `SurfaceFillParams` batching key is now test-visible via

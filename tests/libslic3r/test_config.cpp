@@ -1546,3 +1546,33 @@ TEST_CASE("Three scripted PlanePath contexts preserve independent config identit
     full.bottom_surface_pattern.value = ipMonotonic;
     CHECK(validate(full, true).count("bottom_surface_script_pattern") == 0);
 }
+
+
+TEST_CASE("Scripted PlanePath canonical parameters serialize identically through INI and JSON", "[Config][ScriptedPlanePath]")
+{
+    DynamicPrintConfig first, second;
+    first.set_key_value("top_surface_script_params", new ConfigOptionString(R"({"z":3,"a":{"y":2,"x":1}})"));
+    second.set_key_value("top_surface_script_params", new ConfigOptionString(R"({ "a": { "x": 1, "y": 2 }, "z": 3 })"));
+    const std::string canonical = R"({"a":{"x":1,"y":2},"z":3})";
+    CHECK(first.opt_serialize("top_surface_script_params") == second.opt_serialize("top_surface_script_params"));
+    DynamicPrintConfig parsed;
+    parsed.set_deserialize_strict("top_surface_script_params", first.opt_serialize("top_surface_script_params"));
+    CHECK(parsed.opt_string("top_surface_script_params") == canonical);
+    auto write = [](const DynamicPrintConfig &cfg) {
+        std::ostringstream stream;
+        cfg.save_to_json(stream, "script", "User", "1.0.0.0");
+        return nlohmann::json::parse(stream.str())["top_surface_script_params"];
+    };
+    CHECK(write(first) == canonical);
+    CHECK(write(second) == canonical);
+    CHECK(write(first) == write(second));
+
+    // Invalid dormant input is preserved, but rejected when actually selected.
+    first.set_key_value("top_surface_script_params", new ConfigOptionString("{bad"));
+    CHECK(first.opt_serialize("top_surface_script_params") == "{bad");
+    FullPrintConfig config;
+    config.top_surface_script_params.value = "{bad";
+    CHECK(validate(config, true).count("top_surface_script_params") == 0);
+    config.top_surface_pattern.value = ipScriptedPlanePath;
+    CHECK(validate(config, true).count("top_surface_script_params") == 1);
+}

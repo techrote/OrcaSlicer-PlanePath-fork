@@ -385,7 +385,7 @@ TEST_CASE("Scripted PlanePath config survives 3MF project round trips", "[3mf][S
         source.config.set_key_value(key, new ConfigOptionEnum<InfillPattern>(ipScriptedPlanePath));
     const std::array<std::pair<const char*,const char*>, 6> values{{
         {"top_surface_script_pattern", "org.example.moore"},
-        {"top_surface_script_params", R"({"a":1})"},
+        {"top_surface_script_params", R"({"z":2,"a":1})"},
         {"bottom_surface_script_pattern", "org.example.peano"},
         {"bottom_surface_script_params", R"({"b":2})"},
         {"internal_solid_infill_script_pattern", "org.example.hilbert"},
@@ -403,14 +403,16 @@ TEST_CASE("Scripted PlanePath config survives 3MF project round trips", "[3mf][S
     for (const char *key : {"top_surface_pattern", "bottom_surface_pattern", "internal_solid_infill_pattern"})
         CHECK(destination.config.opt_enum<InfillPattern>(key) == ipScriptedPlanePath);
     for (const auto &entry : values) {
-        CHECK(destination.config.opt_string(entry.first) == entry.second);
+        const std::string expected = std::string(entry.first) == "top_surface_script_params"
+            ? R"({"a":1,"z":2})" : entry.second;
+        CHECK(destination.config.opt_string(entry.first) == expected);
         if (backend == Backend::Bbs) {
             const auto &obj = *destination.model.objects.front();
             REQUIRE(obj.config.has(entry.first));
-            CHECK(obj.config.get().opt_string(entry.first) == entry.second);
+            CHECK(obj.config.get().opt_string(entry.first) == expected);
             const auto &vol = *obj.volumes.front();
             REQUIRE(vol.config.has(entry.first));
-            CHECK(vol.config.get().opt_string(entry.first) == entry.second);
+            CHECK(vol.config.get().opt_string(entry.first) == expected);
         }
     }
 }
