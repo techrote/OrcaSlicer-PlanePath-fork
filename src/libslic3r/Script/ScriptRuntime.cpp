@@ -71,7 +71,7 @@ void *allocator(void *userdata, void *pointer, std::size_t /* Lua osize or type 
     auto *old = pointer ? static_cast<Allocation *>(pointer) - 1 : nullptr;
     if (requested == 0) {
         if (old) {
-            f.retained -= old->capacity;
+            f.retained -= old->capacity + sizeof(Allocation);
             --f.live_blocks;
             std::free(old);
         }
@@ -86,7 +86,8 @@ void *allocator(void *userdata, void *pointer, std::size_t /* Lua osize or type 
     const std::size_t old_capacity = old ? old->capacity : 0;
     if (old && requested <= old_capacity)
         return pointer; // Keep reserved capacity charged even on shrink.
-    const std::size_t growth = requested - old_capacity;
+    // Retained memory includes our alignment-safe allocation header.
+    const std::size_t growth = requested - old_capacity + (old ? 0 : sizeof(Allocation));
     if (growth > f.limits->vm_retained_bytes - f.retained) {
         f.terminal = ScriptError::MemoryBudget;
         return nullptr; // Original pointer and accounting remain intact.
