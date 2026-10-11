@@ -1809,8 +1809,9 @@ TEST_CASE("Mixed native surface patterns preserve historical fill-order carry-ov
             for (const ExtrusionEntity *entity : region->fills.entities) {
                 const auto *collection = dynamic_cast<const ExtrusionEntityCollection *>(entity);
                 REQUIRE(collection != nullptr);
+                const ExtrusionEntityCollection flat = collection->flatten();
                 bool contains_top = false;
-                for (const ExtrusionEntity *child : collection->flatten().entities)
+                for (const ExtrusionEntity *child : flat.entities)
                     contains_top |= child->role() == erTopSolidInfill;
                 if (!contains_top)
                     continue;
