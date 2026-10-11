@@ -147,6 +147,8 @@ set(lisbslic3r_sources
     Fill/FillAdaptive.hpp
     Fill/FillBase.cpp
     Fill/FillBase.hpp
+    Fill/FillPatternTraits.cpp
+    Fill/FillPatternTraits.hpp
     Fill/FillConcentric.cpp
     Fill/FillConcentric.hpp
     Fill/FillSpiralInset.cpp
