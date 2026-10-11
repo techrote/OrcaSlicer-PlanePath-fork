@@ -127,7 +127,7 @@ def main() -> int:
             switches.append(block)
 
         for match in virtual_literal_re.finditer(text):
-            line_no = text.count("\\n", 0, match.start()) + 1
+            line_no = text.count("\n", 0, match.start()) + 1
             line = lines[line_no - 1].strip() if line_no <= len(lines) else ""
             literal_virtual_capabilities.append(
                 {
