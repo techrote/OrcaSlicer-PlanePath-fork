@@ -14,7 +14,7 @@ class FillLine : public Fill
 public:
     Fill* clone() const override { return new FillLine(*this); };
     ~FillLine() override = default;
-    bool is_self_crossing() override { return false; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipLine).self_crossing; }
 
 protected:
 	void _fill_surface_single(

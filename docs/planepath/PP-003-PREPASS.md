@@ -1,0 +1,88 @@
+# PP-003 native fill-pattern trait reconciliation
+
+Implementation baseline: `3d43296f35ca99a040d74415f24647acd778ad8b`
+
+PP-003 centralizes compiled native fill-pattern capabilities without adding a scripted pattern, Lua runtime state, registry, new configuration field, or serialization value. The two archived preparation branches were reviewed before implementation:
+
+- `checkpoint/prepass-PP-003-19f12bbc8cfc`
+- `checkpoint/prepass-PP-003-2921c3fc3227`
+
+Their retained research describes 31 compiled native patterns, 18 caller decisions, 13 explicit exceptions and 267,840 context cases. Those packet results remain research evidence rather than production acceptance; this implementation rechecks the relevant claims against the live source and native test factory.
+
+## Production trait model
+
+`src/libslic3r/Fill/FillPatternTraits.hpp/.cpp` provides a checked `native_fill_pattern_traits(InfillPattern)` lookup. Invalid values, including `ipCount`, are rejected rather than indexing a cache.
+
+The descriptor keeps independent semantics for:
+
+- PlanePath origin: not applicable, bounding-box minimum, or centered;
+- PlanePath conditional source-order handling;
+- per-body/separated-infill eligibility;
+- surface-centering controls;
+- top/bottom `SurfaceFillOrder` capability;
+- declared self-crossing;
+- filler collection `no_sort`;
+- layer-level reversal prohibition;
+- sparse multiline capability;
+- smoothing policy: never, always, or multiline-only;
+- native pattern bridge-flow override;
+- standard versus turning native bridge-anchor/reconstruction policy.
+
+Context remains outside the descriptor where it belongs: surface role, density, rotation-template overrides, physical bridge state, effective-pattern substitutions and requested inward/outward direction.
+
+## Reconciled callers
+
+PP-003 routes the legacy separability and smoothing helpers through the descriptor and migrates the duplicated policy decisions in:
+
+- `FillPlanePath.cpp`: Hilbert minimum-origin and Archimedean/Octagram centered-origin decisions;
+- `Fill.cpp`: surface-order capability, model/body origin eligibility, Grid reversal policy and checked sparse-anchor native domain;
+- `PrintObject.cpp`: turning bridge-anchor policy;
+- `ConfigManipulation.cpp`: multiline, surface-centering and surface-order GUI capability lists;
+- `FillBase.cpp`: static pattern bridge-flow lookup.
+
+Concrete filler classes that already declared `no_sort`, self-crossing or explicit bridge-flow overrides now delegate those declarations to the descriptor. Inherited defaults and the abstract/test PlanePath base remain compatibility boundaries rather than gaining stored pattern identity. The all-native trait test compares every current factory target's virtual results with its descriptor row, so any future divergence is explicit.
+
+## Behavior intentionally preserved
+
+The neutral refactor does not reset reused `SurfaceFillParams` fields. Integration tests characterize the existing fill-order and smoothing carry-over so a future bug fix cannot hide inside PP-003.
+
+The following existing behavior is also preserved:
+
+- Hilbert uses the bounding-box minimum origin while retaining the hidden backend center-mode path;
+- Archimedean Chords and Octagram Spiral are centered and expose surface-centering controls;
+- QuarterCubic remains separable;
+- non-empty sparse/solid rotation templates remain independent exceptions to normal separability;
+- multiline support remains a GUI capability rather than a new backend clamp;
+- Concentric and SpiralInset keep their distinct default ordering behavior;
+- low-density PlanePath `connect_infill()` does not gain source-path restoration;
+- default Hilbert remains sortable and reversible;
+- Grid alone retains the layer-level `can_reverse = false` policy;
+- turning bridge reconstruction remains Hilbert/Octagram only, excluding Archimedean Chords;
+- all audited native pattern-specific bridge-flow overrides remain false, while physical bridge flow remains contextual;
+- narrow-internal-solid and bridge/helper effective-pattern substitutions remain unchanged;
+- CrossHatch and QuarterCubic continue through sparse-anchor generation despite their historical omission from the old switch cases.
+
+## Whole-checkout audit
+
+`scripts/planepath/scan-native-pattern-uses.py` scans every tracked C/C++/Objective-C source file in an actual checkout. It derives the native enum names from `PrintConfig.hpp` and records every reference, every switch containing native cases, every source line containing multiple native pattern names, and any remaining literal `no_sort` / self-crossing / bridge-flow virtual return.
+
+PlanePath CI runs the scanner and uploads `pp003-native-pattern-audit.json`. The inventory is review evidence, not an automatic instruction to replace every switch: factory dispatch, geometry heuristics, effective-pattern substitution and other contextual decisions remain justified native special cases.
+
+## Whole-checkout adjudication
+
+The real-checkout scanner is reviewed semantically rather than used as a mechanical replacement list. The remaining native-pattern sites fall into distinct categories:
+
+- `FillBase.cpp` factory dispatch is implementation selection and remains explicit.
+- `Layer::get_sparse_infill_max_void_area()` is a rough geometry estimate with its own factors/default, not a fill capability descriptor.
+- `Fill.cpp`, `FillRectilinear.cpp`, support code and `PrintObject.cpp` retain algorithm/effective-pattern/geometry choices such as narrow-solid routing, Arachne selection, support pattern selection and overlap clearance.
+- GUI one-off rules for anchors and pattern-specific controls remain option semantics rather than generalized traits.
+- The two repeated `Plater.cpp` sparse-rotation “safe” lists are frozen OrcaSlicer 2.3.1-alpha migration behavior. They must not follow a current capability table. `Tab.cpp` is the current warning policy, while Adaptive/Support Cubic's hard-disable rule in `ConfigManipulation.cpp` is a different semantic decision.
+- G-code small-area flow compensation and the existing Hilbert-only retraction exception are final-emission policies, not inferred PlanePath capabilities. PP-004 must decide scripted behavior explicitly rather than inheriting them by a generic PlanePath flag.
+
+The only enum-case switches in the audited production tree should therefore be the explicit native factory, the authoritative trait lookup and the unrelated Layer void-area heuristic. Any additional capability switch or literal concrete virtual result is a review failure unless separately justified.
+
+The state-reuse defect intentionally preserved by PP-003 is tracked separately as issue #24; the PP-003 characterization tests are not a bug fix.
+
+## Acceptance gates
+
+Production acceptance requires the complete 31-pattern trait/factory equivalence test, invalid-enum rejection, focused PP-002 PlanePath conformance tests, the mixed-context carry-over regressions, turning bridge regressions, full repository unit tests, the whole-checkout audit, and platform build validation. CI results and final merge evidence are recorded on the PP-003 pull request.

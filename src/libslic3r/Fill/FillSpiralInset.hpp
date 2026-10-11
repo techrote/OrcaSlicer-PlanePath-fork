@@ -9,7 +9,7 @@ class FillSpiralInset : public Fill
 {
 public:
 	~FillSpiralInset() override = default;
-	bool is_self_crossing() override { return false; }
+	bool is_self_crossing() override { return native_fill_pattern_traits(ipSpiralInset).self_crossing; }
 
 protected:
 	Fill* clone() const override { return new FillSpiralInset(*this); };
@@ -29,7 +29,7 @@ protected:
 		ExPolygon                      expolygon,
 		ThickPolylines                &thick_polylines_out) override;
 
-	bool no_sort() const override { return true; }
+	bool no_sort() const override { return native_fill_pattern_traits(ipSpiralInset).collection_no_sort; }
 };
 
 } // namespace Slic3r

@@ -12,6 +12,7 @@
 #include "AABBTreeLines.hpp"
 #include "ExtrusionEntity.hpp"
 #include "Fill.hpp"
+#include "FillPatternTraits.hpp"
 #include "FillRectilinear.hpp"
 #include "FillLightning.hpp"
 #include "FillConcentricInternal.hpp"
@@ -950,7 +951,7 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
                     params.extruder = region_config.internal_solid_filament_id;
                 // Orca: forced fill order applies only to top/bottom surfaces filled with a
                 // center-based pattern; everything else stays at Default to keep batching together.
-                if (params.pattern == ipConcentric || params.pattern == ipSpiralInset || params.pattern == ipArchimedeanChords || params.pattern == ipOctagramSpiral) {
+                if (native_fill_pattern_traits(params.pattern).surface_fill_order) {
                     if (params.extrusion_role == erTopSolidInfill)
                         params.fill_order = region_config.top_surface_fill_order.value;
                     else if (params.extrusion_role == erBottomSurface)
@@ -1240,11 +1241,12 @@ static BoundingBox infill_bounding_box(const Layer &layer, const SurfaceFill &fi
 {
     const auto &params = fill.params;
     const auto &config = layer.regions()[fill.region_id]->region().config();
+    const FillPatternTraits traits = native_fill_pattern_traits(params.pattern);
     const bool external = params.extrusion_role == erTopSolidInfill || params.extrusion_role == erBottomSurface;
     const bool per_model = external && params.center_of_surface_pattern == CenterOfSurfacePattern::Each_Model &&
-                           (params.pattern == ipArchimedeanChords || params.pattern == ipOctagramSpiral);
+                           traits.surface_center_controls;
     const bool separate = !external && params.separated_infills &&
-                          (is_separable_infill_pattern(params.pattern) || !config.solid_infill_rotate_template.value.empty() ||
+                          (traits.separable || !config.solid_infill_rotate_template.value.empty() ||
                            !config.sparse_infill_rotate_template.value.empty());
     if (per_model || separate) {
         double best_overlap = 0.;
@@ -1402,7 +1404,7 @@ void Layer::make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive:
             params.symmetric_infill_y_axis = surface_fill.params.symmetric_infill_y_axis;
 
         }
-		if (surface_fill.params.pattern == ipGrid)
+		if (native_fill_pattern_traits(surface_fill.params.pattern).layer_forbids_reverse)
 			params.can_reverse = false;
 		for (ExPolygon& expoly : surface_fill.expolygons) {
 
@@ -1489,38 +1491,12 @@ Polylines Layer::generate_sparse_infill_polylines_for_anchoring(FillAdaptive::Oc
 			continue;
 		}
 
-        switch (surface_fill.params.pattern) {
-        case ipCount: continue; break;
-        case ipSupportBase: continue; break;
-        case ipConcentricInternal: continue; break;
-        case ipLightning:
-		case ipAdaptiveCubic:
-        case ipSupportCubic:
-        case ipRectilinear:
-        case ipMonotonic:
-        case ipMonotonicLine:
-        case ipAlignedRectilinear:
-        case ipGrid:
-        case ipLateralLattice:
-        case ipTriangles:
-        case ipStars:
-        case ipCubic:
-        case ipLine:
-        case ipConcentric:
-        case ipSpiralInset:
-        case ipHoneycomb:
-        case ipLateralHoneycomb:
-        case ip3DHoneycomb:
-        case ipGyroid:
-        case ipTpmsD:
-        case ipTpmsFK:
-        case ipHilbertCurve:
-        case ipArchimedeanChords:
-        case ipOctagramSpiral:
-        case ipZigZag:
-        case ipCrossZag:
-		case ipLockedZag: break;
-        }
+        // SupportBase and ConcentricInternal are never sparse-anchor generators. All other
+        // valid native patterns proceed to the factory. In particular, keep the historical
+        // CrossHatch/QuarterCubic fall-through behavior instead of turning this into a whitelist.
+        if (surface_fill.params.pattern == ipSupportBase || surface_fill.params.pattern == ipConcentricInternal)
+            continue;
+        (void) native_fill_pattern_traits(surface_fill.params.pattern); // checked native-domain validation
 
         // Create the filler object.
         std::unique_ptr<Fill> f = std::unique_ptr<Fill>(Fill::new_from_type(surface_fill.params.pattern));

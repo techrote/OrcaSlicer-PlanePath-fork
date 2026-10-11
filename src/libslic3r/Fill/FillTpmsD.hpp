@@ -18,7 +18,7 @@ public:
     Fill* clone() const override { return new FillTpmsD(*this); }
 
     // require bridge flow since most of this pattern hangs in air
-    bool use_bridge_flow() const override { return false; }
+    bool use_bridge_flow() const override { return native_fill_pattern_traits(ipTpmsD).pattern_bridge_flow; }
   
 
     // Correction applied to regular infill angle to maximize printing
@@ -31,7 +31,7 @@ public:
                               ExPolygon                      expolygon,
                               Polylines&                     polylines_out) override;
 
-    bool is_self_crossing() override { return false; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipTpmsD).self_crossing; }
 
     // Density adjustment to have a good %of weight.
     static constexpr double DensityAdjust = 2.1;

@@ -147,6 +147,8 @@ set(lisbslic3r_sources
     Fill/FillAdaptive.hpp
     Fill/FillBase.cpp
     Fill/FillBase.hpp
+    Fill/FillPatternTraits.cpp
+    Fill/FillPatternTraits.hpp
     Fill/FillConcentric.cpp
     Fill/FillConcentric.hpp
     Fill/FillSpiralInset.cpp
@@ -582,6 +584,7 @@ add_library(planepath_script_runtime STATIC
 target_include_directories(planepath_script_runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(planepath_script_runtime PRIVATE PlanePathLua::Lua)
 target_link_libraries(libslic3r PRIVATE planepath_script_runtime)
+
 
 
 if (SLIC3R_STATIC)
