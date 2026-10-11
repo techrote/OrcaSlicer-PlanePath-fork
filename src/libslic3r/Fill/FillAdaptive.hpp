@@ -73,8 +73,8 @@ protected:
     //FIXME letting the G-code exporter to reorder infill lines of Adaptive Cubic Infill
     // may not be optimal as the internal infill lines may get extruded before the long infill
     // lines to which the short infill lines are supposed to anchor.
-	bool no_sort() const override { return false; }
-    bool is_self_crossing() override { return true; }
+	bool no_sort() const override { return native_fill_pattern_traits(ipAdaptiveCubic).collection_no_sort; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipAdaptiveCubic).self_crossing; }
 };
 
 } // namespace FillAdaptive

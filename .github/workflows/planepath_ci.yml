@@ -33,6 +33,40 @@ jobs:
       force-build: false
     secrets: inherit
 
+
+  build_windows_x64:
+    name: Build Windows x64
+    uses: ./.github/workflows/build_check_cache.yml
+    with:
+      os: windows-latest
+      arch: x64
+      compiler: clang
+      build-deps-only: false
+      force-build: false
+    secrets: inherit
+
+  native_pattern_source_audit:
+    name: Native pattern source audit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan complete checkout for native InfillPattern uses
+        run: python3 scripts/planepath/scan-native-pattern-uses.py --repo . --out pp003-native-pattern-audit.json
+      - name: Upload native pattern audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: pp003-native-pattern-audit
+          path: pp003-native-pattern-audit.json
+
+  unit_tests_windows_x64:
+    name: Unit tests Windows x64
+    needs: build_windows_x64
+    if: ${{ !cancelled() && success() }}
+    uses: ./.github/workflows/unit_tests.yml
+    with:
+      os: windows-latest
+      artifact: ${{ github.sha }}-tests-windows-x64
+
   unit_tests_linux_x86_64:
     name: Unit tests Linux x86_64
     needs: build_linux_x86_64

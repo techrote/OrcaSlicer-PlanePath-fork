@@ -14,8 +14,8 @@ public:
     Fill* clone() const override { return new FillGyroid(*this); }
 
     // require bridge flow since most of this pattern hangs in air
-    bool use_bridge_flow() const override { return false; }
-    bool is_self_crossing() override { return false; }
+    bool use_bridge_flow() const override { return native_fill_pattern_traits(ipGyroid).pattern_bridge_flow; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipGyroid).self_crossing; }
 
     // Correction applied to regular infill angle to maximize printing
     // speed in default configuration (degrees)

@@ -1777,6 +1777,95 @@ TEST_CASE("Solid native PlanePath does not inherit sparse smoothing", "[Fill][Pl
     CHECK(smooth.sequence == sharp.sequence);
 }
 
+TEST_CASE("Mixed native surface patterns preserve historical fill-order carry-over", "[Fill][PlanePathConformance][Regression]")
+{
+    auto config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({{"sparse_infill_density", "100%"},
+                                   {"top_surface_pattern", "archimedeanchords"},
+                                   {"top_surface_fill_order", "outward"},
+                                   {"internal_solid_infill_pattern", "rectilinear"},
+                                   {"top_shell_layers", 2},
+                                   {"bottom_shell_layers", 2},
+                                   {"top_shell_thickness", 0},
+                                   {"bottom_shell_thickness", 0},
+                                   {"layer_height", 0.2},
+                                   {"initial_layer_print_height", 0.2}});
+
+    Print print;
+    Model model;
+    Slic3r::Test::init_print({make_cube(12, 12, 2)}, print, model, config, nullptr, false);
+    TriangleMesh second = make_cube(12, 12, 2);
+    second.translate(20, 0, 0);
+    ModelVolume *volume = model.objects.front()->add_volume(std::move(second));
+    volume->config.set_key_value("top_surface_pattern", new ConfigOptionEnum<InfillPattern>(ipHilbertCurve));
+    print.apply(model, config);
+    print.process();
+
+    size_t carried_collections = 0;
+    for (const Layer *layer : print.objects().front()->layers())
+        for (const LayerRegion *region : layer->regions()) {
+            if (region->region().config().top_surface_pattern != ipHilbertCurve)
+                continue;
+            for (const ExtrusionEntity *entity : region->fills.entities) {
+                const auto *collection = dynamic_cast<const ExtrusionEntityCollection *>(entity);
+                REQUIRE(collection != nullptr);
+                const ExtrusionEntityCollection flat = collection->flatten();
+                bool contains_top = false;
+                for (const ExtrusionEntity *child : flat.entities)
+                    contains_top |= child->role() == erTopSolidInfill;
+                if (!contains_top)
+                    continue;
+                // PP-003 intentionally preserves SurfaceFillParams reuse: the preceding
+                // Archimedean top surface leaves Outward set for this unsupported Hilbert row.
+                CHECK(collection->no_sort);
+                ++carried_collections;
+            }
+        }
+    REQUIRE(carried_collections > 0);
+}
+
+TEST_CASE("Sparse smoothing carry-over into a later solid native fill remains unchanged", "[Fill][PlanePathConformance][Regression]")
+{
+    auto slice = [](const std::string &smooth_factor) {
+        auto config = DynamicPrintConfig::full_print_config();
+        config.set_deserialize_strict({{"sparse_infill_pattern", "hilbertcurve"},
+                                       {"sparse_infill_density", "15%"},
+                                       {"sparse_infill_smooth_factor", smooth_factor},
+                                       {"internal_solid_infill_pattern", "hilbertcurve"},
+                                       {"top_surface_pattern", "hilbertcurve"},
+                                       {"bottom_surface_pattern", "hilbertcurve"},
+                                       {"top_shell_layers", 0},
+                                       {"bottom_shell_layers", 0},
+                                       {"top_shell_thickness", 0},
+                                       {"bottom_shell_thickness", 0},
+                                       {"layer_height", 0.2},
+                                       {"initial_layer_print_height", 0.2}});
+
+        Print print;
+        Model model;
+        Slic3r::Test::init_print({make_cube(12, 12, 2)}, print, model, config, nullptr, false);
+        TriangleMesh second = make_cube(12, 12, 2);
+        second.translate(20, 0, 0);
+        ModelVolume *volume = model.objects.front()->add_volume(std::move(second));
+        volume->config.set_key_value("sparse_infill_density", new ConfigOptionPercent(100.));
+        volume->config.set_key_value("top_shell_layers", new ConfigOptionInt(2));
+        volume->config.set_key_value("bottom_shell_layers", new ConfigOptionInt(2));
+        print.apply(model, config);
+        print.process();
+        return solid_plane_path_snapshot(print);
+    };
+
+    const SolidPlanePathSnapshot sharp  = slice("0%");
+    const SolidPlanePathSnapshot smooth = slice("100%");
+    REQUIRE(sharp.path_count > 0);
+    REQUIRE(smooth.path_count > 0);
+
+    // This difference is the pre-existing state carry-over characterized by the PP-003 prepass.
+    // The neutral trait refactor must not silently reset smooth_factor on the later solid region.
+    const bool geometry_changed = smooth.point_count != sharp.point_count || smooth.sequence != sharp.sequence;
+    CHECK(geometry_changed);
+}
+
 TEST_CASE("Native Hilbert final extrusion order remains optimizable by default", "[Fill][PlanePathConformance]")
 {
     Print print;

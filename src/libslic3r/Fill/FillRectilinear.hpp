@@ -16,7 +16,7 @@ public:
     Fill* clone() const override { return new FillRectilinear(*this); }
     ~FillRectilinear() override = default;
     Polylines fill_surface(const Surface *surface, const FillParams &params) override;
-    bool is_self_crossing() override { return false; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipRectilinear).self_crossing; }
 
 protected:
     // Fill by single directional lines, interconnect the lines along perimeters.
@@ -52,7 +52,7 @@ public:
     Fill* clone() const override { return new FillMonotonic(*this); }
     ~FillMonotonic() override = default;
     Polylines fill_surface(const Surface *surface, const FillParams &params) override;
-	bool no_sort() const override { return true; }
+	bool no_sort() const override { return native_fill_pattern_traits(ipMonotonic).collection_no_sort; }
 };
 
 class FillMonotonicLine : public FillRectilinear
@@ -61,7 +61,7 @@ public:
     Fill* clone() const override { return new FillMonotonicLine(*this); }
     ~FillMonotonicLine() override = default;
     Polylines fill_surface(const Surface *surface, const FillParams &params) override;
-    bool no_sort() const override { return true; }
+    bool no_sort() const override { return native_fill_pattern_traits(ipMonotonicLine).collection_no_sort; }
 };
 
 class FillGrid : public FillRectilinear
@@ -70,7 +70,7 @@ public:
     Fill* clone() const override { return new FillGrid(*this); }
     ~FillGrid() override = default;
     Polylines fill_surface(const Surface *surface, const FillParams &params) override;
-    bool is_self_crossing() override { return true; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipGrid).self_crossing; }
 
 protected:
 	// The grid fill will keep the angle constant between the layers, see the implementation of Slic3r::Fill.
@@ -95,7 +95,7 @@ public:
     Fill* clone() const override { return new FillTriangles(*this); }
     ~FillTriangles() override = default;
     Polylines fill_surface(const Surface *surface, const FillParams &params) override;
-    bool is_self_crossing() override { return true; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipTriangles).self_crossing; }
 
 protected:
 	// The grid fill will keep the angle constant between the layers, see the implementation of Slic3r::Fill.
@@ -108,7 +108,7 @@ public:
     Fill* clone() const override { return new FillStars(*this); }
     ~FillStars() override = default;
     Polylines fill_surface(const Surface *surface, const FillParams &params) override;
-    bool is_self_crossing() override { return true; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipStars).self_crossing; }
 
 protected:
     // The grid fill will keep the angle constant between the layers, see the implementation of Slic3r::Fill.
@@ -121,7 +121,7 @@ public:
     Fill* clone() const override { return new FillCubic(*this); }
     ~FillCubic() override = default;
     Polylines fill_surface(const Surface *surface, const FillParams &params) override;
-    bool is_self_crossing() override { return true; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipCubic).self_crossing; }
 
 protected:
 	// The grid fill will keep the angle constant between the layers, see the implementation of Slic3r::Fill.
@@ -170,7 +170,7 @@ public:
     Fill* clone() const override { return new FillMonotonicLines(*this); }
     ~FillMonotonicLines() override = default;
     Polylines fill_surface(const Surface *surface, const FillParams &params) override;
-    bool no_sort() const override { return true; }
+    bool no_sort() const override { return native_fill_pattern_traits(ipMonotonicLine).collection_no_sort; }
 };
 
 //Orca: Replaced with FillMonotonicLines, inheriting from FillRectilinear

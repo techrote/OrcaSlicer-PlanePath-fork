@@ -14,7 +14,7 @@ class FillCrossHatch : public Fill
 public:
     Fill *clone() const override { return new FillCrossHatch(*this); };
     ~FillCrossHatch() override {}
-    bool is_self_crossing() override { return false; }
+    bool is_self_crossing() override { return native_fill_pattern_traits(ipCrossHatch).self_crossing; }
 
 protected:
 	void _fill_surface_single(

@@ -120,57 +120,10 @@ enum InfillPattern : int {
     ipCount,
 };
 
-// Orca: Infill patterns whose alignment origin follows the fill bounding box, so the
-// "separated_infills" option can re-center them per connected body. Patterns evaluated in
-// absolute/global coordinates (Gyroid, TPMS, Honeycomb, CrossHatch, ...) or that are shape-relative
-// (Concentric) ignore that bounding box and are therefore excluded.
-inline bool is_separable_infill_pattern(InfillPattern pattern)
-{
-    switch (pattern) {
-    case ipRectilinear:
-    case ipAlignedRectilinear:
-    case ipZigZag:
-    case ipCrossZag:
-    case ipLockedZag:
-    case ipGrid:
-    case ipTriangles:
-    case ipStars:          // tri-hexagon
-    case ipCubic:
-    case ipQuarterCubic:
-    case ipLateralHoneycomb:
-    case ipLateralLattice:
-    case ipHilbertCurve:
-    case ipArchimedeanChords:
-    case ipOctagramSpiral:
-        return true;
-    default:
-        return false;
-    }
-}
-
-// Orca: Infill patterns that round their corners by the "sparse_infill_smooth_factor" option.
-// Grid, Triangles and Tri-hexagon only do so in their trapezoidal form, which is generated with more
-// than one line per infill wall; a single line makes them plain crossing lines with nothing to round.
-inline bool is_smoothable_infill_pattern(InfillPattern pattern, int multiline = 1)
-{
-    switch (pattern) {
-    case ipHilbertCurve:
-    case ipOctagramSpiral:
-    case ipLightning:
-    case ipHoneycomb:
-    case ip3DHoneycomb:
-    case ipConcentric:
-    case ipCrossHatch:
-        return true;
-    case ipGrid:
-    case ipTriangles:
-    case ipStars:
-    case ipCubic:
-        return multiline > 1;
-    default:
-        return false;
-    }
-}
+// Orca: Native infill capability compatibility helpers. The authoritative memberships live in
+// Fill/FillPatternTraits.cpp; keep these signatures stable for existing callers.
+bool is_separable_infill_pattern(InfillPattern pattern);
+bool is_smoothable_infill_pattern(InfillPattern pattern, int multiline = 1);
 
 enum class IroningType {
     NoIroning,
