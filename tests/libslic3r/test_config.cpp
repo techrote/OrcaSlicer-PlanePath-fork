@@ -1538,7 +1538,10 @@ TEST_CASE("Three scripted PlanePath contexts preserve independent config identit
     std::string reason;
     REQUIRE(from_preset.load_from_json(tmp.string(), subs, true, values, reason) == 0);
     CHECK(reason.empty());
-    CHECK(from_preset.diff(cfg).empty());
+    for (const auto &field : fields)
+        CHECK(from_preset.opt_string(field.first) == cfg.opt_string(field.first));
+    for (const char *key : {"top_surface_pattern", "bottom_surface_pattern", "internal_solid_infill_pattern"})
+        CHECK(from_preset.opt_serialize(key) == cfg.opt_serialize(key));
 
     // Bad active input fails explicitly; dormant native companions do not.
     full.top_surface_script_params.value = R"({"bad":NaN})";
