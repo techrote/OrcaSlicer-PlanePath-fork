@@ -1473,6 +1473,9 @@ void Layer::make_ironing()
 	// A surface will be ironed with the same extruder to not contaminate the print with another material leaking from the nozzle.
 
 	// First classify regions based on the extruder used.
+    // SurfaceFillParams historically left this macro in file scope. PP-004 moved
+    // that batching key to a header, so keep IroningParams' legacy ordering local.
+#define RETURN_COMPARE_NON_EQUAL(KEY) if (this->KEY < rhs.KEY) return true; if (this->KEY > rhs.KEY) return false;
 	struct IroningParams {
 		InfillPattern pattern;
 		int 		extruder 	= -1;
@@ -1526,6 +1529,7 @@ void Layer::make_ironing()
 		// flow: from normal layer height. 10%
 		// speed: 20 mm/sec
 	};
+#undef RETURN_COMPARE_NON_EQUAL
 
 	std::vector<IroningParams> by_extruder;
     double default_layer_height = this->object()->config().layer_height;
