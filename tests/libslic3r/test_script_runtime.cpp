@@ -63,6 +63,25 @@ TEST_CASE("PP-005 Lua capabilities and context are strictly restricted", "[Scrip
     CHECK(r.points.empty());
 }
 
+TEST_CASE("PP-005 C++ host exceptions cannot escape Lua frames", "[ScriptRuntime]")
+{
+    const ScriptRuntime runtime;
+    ScriptLimits limits;
+    limits.fail_output_reservation_at = 1;
+    const auto ctx = context();
+    auto result = runtime.execute(
+        "function generate(ctx,out) out:point(1,1) out:point(2,2) end", ctx, limits);
+    CHECK(result.diagnostic.error == ScriptError::Host);
+    CHECK(result.points.empty());
+    CHECK(result.statistics.vm_live_blocks_after_close == 0);
+
+    limits = ScriptLimits{};
+    result = runtime.execute(
+        "function generate(ctx,out) out:point(1,1) out:point(2,2) end", ctx, limits);
+    CHECK(result.ok());
+    CHECK(result.points.size() == 2);
+}
+
 TEST_CASE("PP-005 Lua terminal budgets and cancellations clear output", "[ScriptRuntime]")
 {
     ScriptRuntime runtime;
