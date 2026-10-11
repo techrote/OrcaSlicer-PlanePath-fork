@@ -32,6 +32,7 @@ struct Frame {
     std::size_t peak_retained = 0;
     std::size_t live_blocks = 0;
     std::size_t allocation_attempts = 0;
+    std::size_t output_reservations = 0;
     std::uint32_t next_hook_charge = 0;
 };
 
@@ -250,7 +251,11 @@ int emit_point(lua_State *L)
         if (!charge(f, next))
             return fail(L, f.terminal);
         bool allocation_failed = false;
+        ++f.output_reservations;
         try {
+            if (f.limits->fail_output_reservation_at &&
+                f.output_reservations == f.limits->fail_output_reservation_at)
+                throw std::bad_alloc();
             points.reserve(next);
         } catch (...) {
             allocation_failed = true; // unwind C++ destructors before Lua error
