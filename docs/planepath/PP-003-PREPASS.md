@@ -68,6 +68,21 @@ The following existing behavior is also preserved:
 
 PlanePath CI runs the scanner and uploads `pp003-native-pattern-audit.json`. The inventory is review evidence, not an automatic instruction to replace every switch: factory dispatch, geometry heuristics, effective-pattern substitution and other contextual decisions remain justified native special cases.
 
+## Whole-checkout adjudication
+
+The real-checkout scanner is reviewed semantically rather than used as a mechanical replacement list. The remaining native-pattern sites fall into distinct categories:
+
+- `FillBase.cpp` factory dispatch is implementation selection and remains explicit.
+- `Layer::get_sparse_infill_max_void_area()` is a rough geometry estimate with its own factors/default, not a fill capability descriptor.
+- `Fill.cpp`, `FillRectilinear.cpp`, support code and `PrintObject.cpp` retain algorithm/effective-pattern/geometry choices such as narrow-solid routing, Arachne selection, support pattern selection and overlap clearance.
+- GUI one-off rules for anchors and pattern-specific controls remain option semantics rather than generalized traits.
+- The two repeated `Plater.cpp` sparse-rotation “safe” lists are frozen OrcaSlicer 2.3.1-alpha migration behavior. They must not follow a current capability table. `Tab.cpp` is the current warning policy, while Adaptive/Support Cubic's hard-disable rule in `ConfigManipulation.cpp` is a different semantic decision.
+- G-code small-area flow compensation and the existing Hilbert-only retraction exception are final-emission policies, not inferred PlanePath capabilities. PP-004 must decide scripted behavior explicitly rather than inheriting them by a generic PlanePath flag.
+
+The only enum-case switches in the audited production tree should therefore be the explicit native factory, the authoritative trait lookup and the unrelated Layer void-area heuristic. Any additional capability switch or literal concrete virtual result is a review failure unless separately justified.
+
+The state-reuse defect intentionally preserved by PP-003 is tracked separately as issue #24; the PP-003 characterization tests are not a bug fix.
+
 ## Acceptance gates
 
 Production acceptance requires the complete 31-pattern trait/factory equivalence test, invalid-enum rejection, focused PP-002 PlanePath conformance tests, the mixed-context carry-over regressions, turning bridge regressions, full repository unit tests, the whole-checkout audit, and platform build validation. CI results and final merge evidence are recorded on the PP-003 pull request.
