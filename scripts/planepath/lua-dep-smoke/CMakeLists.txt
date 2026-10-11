@@ -19,3 +19,8 @@ endif()
 add_executable(planepath_lua_dep_smoke main.c)
 target_link_libraries(planepath_lua_dep_smoke PRIVATE PlanePathLua::Lua)
 add_test(NAME planepath_lua_dependency COMMAND planepath_lua_dep_smoke)
+
+add_executable(planepath_lua_gc_stress gc.c)
+target_link_libraries(planepath_lua_gc_stress PRIVATE PlanePathLua::Lua)
+add_test(NAME planepath_lua_gc_stress COMMAND planepath_lua_gc_stress)
+set_tests_properties(planepath_lua_gc_stress PROPERTIES TIMEOUT 45 LABELS "ScriptRuntime;GC")
