@@ -38,6 +38,16 @@ else()
     endif()
 endif()
 
+# Instrument the *actual pinned Lua C sources*, not only the C++ host.
+option(PLANEPATH_LUA_SANITIZE "Instrument PUC Lua with ASan and UBSan" OFF)
+if(PLANEPATH_LUA_SANITIZE)
+    if(MSVC)
+        message(FATAL_ERROR "The PP-005 Lua sanitizer profile requires GCC/Clang")
+    endif()
+    target_compile_options(PlanePathLua PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(PlanePathLua INTERFACE -fsanitize=address,undefined)
+endif()
+
 target_include_directories(PlanePathLua PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/planepath-lua-5.5>)
