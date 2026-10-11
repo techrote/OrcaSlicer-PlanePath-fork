@@ -10,6 +10,8 @@ on:
       - 'deps/Lua/**'
       - 'deps/CMakeLists.txt'
       - 'scripts/planepath/lua-dep-smoke/**'
+      - 'scripts/planepath/lua-runtime-tests/**'
+      - 'src/libslic3r/Script/**'
       - '.github/workflows/planepath_lua_dependency.yml'
   pull_request:
     branches: [main]
@@ -17,6 +19,8 @@ on:
       - 'deps/Lua/**'
       - 'deps/CMakeLists.txt'
       - 'scripts/planepath/lua-dep-smoke/**'
+      - 'scripts/planepath/lua-runtime-tests/**'
+      - 'src/libslic3r/Script/**'
       - '.github/workflows/planepath_lua_dependency.yml'
   workflow_dispatch:
 
@@ -62,4 +66,18 @@ jobs:
           cmake --build .pp005-smoke --config Release --parallel 2
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ctest --test-dir .pp005-smoke -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Configure production sandbox tests
+        shell: pwsh
+        run: |
+          $prefix = Join-Path $env:GITHUB_WORKSPACE '.pp005-deps/OrcaSlicer_dep/usr/local'
+          cmake -S scripts/planepath/lua-runtime-tests -B .pp005-runtime -DPLANEPATH_LUA_PREFIX="$prefix"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and run production sandbox adversarial tests
+        shell: pwsh
+        run: |
+          cmake --build .pp005-runtime --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir .pp005-runtime -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
