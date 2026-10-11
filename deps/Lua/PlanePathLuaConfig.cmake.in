@@ -23,6 +23,23 @@ if(NOT "DEBUG" IN_LIST _pp_configs)
     unset(_pp_debug_archive)
 endif()
 
+# Conversely, a Debug-only install must remain configureable with Visual
+# Studio's all-configuration project generation. Its Release path is a distinct
+# deliberately missing archive, never a fallback to /MDd Debug.
+if(NOT "RELEASE" IN_LIST _pp_configs AND
+   NOT "RELWITHDEBINFO" IN_LIST _pp_configs AND
+   NOT "MINSIZEREL" IN_LIST _pp_configs)
+    if(WIN32)
+        set(_pp_release_archive "${PACKAGE_PREFIX_DIR}/lib/planepath_lua55.lib")
+    else()
+        set(_pp_release_archive "${PACKAGE_PREFIX_DIR}/lib/libplanepath_lua55.a")
+    endif()
+    set_property(TARGET PlanePathLua::Lua APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+    set_property(TARGET PlanePathLua::Lua PROPERTY IMPORTED_LOCATION_RELEASE "${_pp_release_archive}")
+    set_property(TARGET PlanePathLua::Lua PROPERTY IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "C")
+    unset(_pp_release_archive)
+endif()
+
 set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_DEBUG DEBUG)
 set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_RELEASE RELEASE RELWITHDEBINFO MINSIZEREL)
 set_property(TARGET PlanePathLua::Lua PROPERTY MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELWITHDEBINFO RELEASE MINSIZEREL)
