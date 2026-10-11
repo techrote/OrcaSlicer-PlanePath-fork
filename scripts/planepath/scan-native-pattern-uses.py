@@ -99,7 +99,7 @@ def main() -> int:
     multi_pattern_expressions: list[dict[str, object]] = []
     literal_virtual_capabilities: list[dict[str, object]] = []
     virtual_literal_re = re.compile(
-        r"\\b(?P<method>no_sort|is_self_crossing|use_bridge_flow)\\s*\\([^)]*\\)[^{;]*\\{[^}]*?return\\s+(?P<value>true|false)\\s*;"
+        r"\b(?P<method>no_sort|is_self_crossing|use_bridge_flow)\s*\([^)]*\)[^{;]*\{[^}]*?return\s+(?P<value>true|false)\s*;"
     )
     scanned = 0
 
