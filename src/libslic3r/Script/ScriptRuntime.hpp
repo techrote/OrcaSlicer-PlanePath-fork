@@ -49,6 +49,8 @@ struct ScriptLimits {
     std::uint32_t hook_interval = 128;
     // Test-only deterministic allocation fault: zero disables injection.
     std::size_t fail_allocation_at = 0;
+    // Test-only: fail the chosen C++ output reservation before std::vector allocation.
+    std::size_t fail_output_reservation_at = 0;
 };
 
 enum class ScriptPhase : std::uint8_t { Validate, Create, Setup, Load, Initialize, Generate, Finish, Close };
