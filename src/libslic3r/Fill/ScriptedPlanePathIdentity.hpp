@@ -65,8 +65,10 @@ inline ScriptedPlanePathInvocation scripted_invocation_for_effective_pattern(
     case ScriptedPlanePathContext::None:
         throw SlicingError("Scripted PlanePath is unsupported in this fill context");
     }
-    if (id->value.empty())
+    if (id->value.empty() || id->value.find_first_not_of(" \t\n\r") == std::string::npos)
         throw SlicingError("Scripted PlanePath package ID is missing");
+    if (id->value.size() > 1024)
+        throw SlicingError("Scripted PlanePath package ID exceeds 1,024 bytes");
     try {
         return {id->value, canonical_scripted_plane_path_params(params->value)};
     } catch (const std::invalid_argument &e) {

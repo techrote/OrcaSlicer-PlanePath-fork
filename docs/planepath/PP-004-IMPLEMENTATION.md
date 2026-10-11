@@ -10,7 +10,7 @@ Companion options (flat `ConfigOptionString` members of `PrintRegionConfig`):
 - `bottom_surface_script_pattern` / `bottom_surface_script_params`
 - `internal_solid_infill_script_pattern` / `internal_solid_infill_script_params`
 
-IDs are stable strings, and parameter defaults are `{}`. PP-004 validates active
+IDs are stable strings limited to 1,024 bytes, and parameter defaults are `{}`. PP-004 validates active
 parameter payloads as bounded JSON objects and canonicalizes parsed key order using
 the existing nlohmann JSON dependency for **effective invocation equality**. The
 configuration fields are standard string options; syntactically valid parameter objects

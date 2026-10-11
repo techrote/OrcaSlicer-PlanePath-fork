@@ -229,6 +229,9 @@ TEST_CASE("SurfaceFillParams ordering and equality both include exact scripted i
     CHECK(scripted_invocation_for_effective_pattern(cfg, ipRectilinear, ScriptedPlanePathContext::Top).empty());
     CHECK(scripted_invocation_for_effective_pattern(cfg, ipConcentricInternal, ScriptedPlanePathContext::InternalSolid).empty());
 
+    cfg.top_surface_script_pattern.value = std::string(1025, 'x');
+    CHECK_THROWS_AS(scripted_invocation_for_effective_pattern(
+        cfg, ipScriptedPlanePath, ScriptedPlanePathContext::Top), SlicingError);
     cfg.top_surface_script_pattern.value.clear();
     CHECK_THROWS_AS(scripted_invocation_for_effective_pattern(
         cfg, ipScriptedPlanePath, ScriptedPlanePathContext::Top), SlicingError);

@@ -11851,8 +11851,10 @@ std::map<std::string, std::string> validate(const FullPrintConfig &cfg, bool und
                                  const ConfigOptionString &json, const char *id_key,
                                  const char *json_key) {
         if (pattern != ipScriptedPlanePath) return;
-        if (id.value.empty())
+        if (id.value.empty() || id.value.find_first_not_of(" \t\n\r") == std::string::npos)
             error_message.emplace(id_key, "Scripted PlanePath package ID is required");
+        else if (id.value.size() > 1024)
+            error_message.emplace(id_key, "Scripted PlanePath package ID exceeds 1,024 bytes");
         try {
             (void)canonical_scripted_plane_path_params(json.value);
         } catch (const std::invalid_argument &e) {
