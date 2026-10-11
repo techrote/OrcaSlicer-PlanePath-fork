@@ -21,6 +21,7 @@
 #include "Utils.hpp"
 #include "Fill/FillAdaptive.hpp"
 #include "Fill/Fill.hpp"
+#include "Fill/FillPatternTraits.hpp"
 #include "Fill/FillLightning.hpp"
 #include "Format/STL.hpp"
 #include "format.hpp"
@@ -3404,8 +3405,8 @@ void PrintObject::bridge_over_infill()
                 expanded_surfaces.reserve(surfaces_by_layer[lidx].size());
                 for (const CandidateSurface &candidate : surfaces_by_layer[lidx]) {
                     const auto &region_config = candidate.region->region().config();
-                    const bool turning_pattern = region_config.sparse_infill_pattern == ipHilbertCurve ||
-                                                 region_config.sparse_infill_pattern == ipOctagramSpiral;
+                    const bool turning_pattern =
+                        native_fill_pattern_traits(region_config.sparse_infill_pattern).bridge_anchor_policy == BridgeAnchorPolicy::Turning;
                     const Flow &flow              = candidate.region->bridging_flow(frSolidInfill, true);
                     Polygons    area_to_be_bridge = expand(candidate.new_polys, flow.scaled_spacing());
                     area_to_be_bridge             = intersection(area_to_be_bridge, deep_infill_area);
