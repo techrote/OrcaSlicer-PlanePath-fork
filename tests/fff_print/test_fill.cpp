@@ -2097,3 +2097,54 @@ TEST_CASE("Selected scripted PlanePath contexts fail slicing explicitly while un
         CHECK(diagnostic.find("unresolved") != std::string::npos);
     }
 }
+
+
+TEST_CASE("Scripted PlanePath missing active ID fails at the configuration handoff", "[Fill][ScriptedPlanePath]")
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({{"sparse_infill_density", "100%"},
+                                   {"top_surface_pattern", "scriptedplanepath"},
+                                   {"top_shell_layers", 2},
+                                   {"bottom_shell_layers", 2},
+                                   {"top_shell_thickness", 0},
+                                   {"bottom_shell_thickness", 0},
+                                   {"layer_height", 0.2},
+                                   {"initial_layer_print_height", 0.2}});
+    Print print;
+    Model model;
+    Slic3r::Test::init_print({make_cube(12, 12, 2)}, print, model, config, nullptr, false);
+    std::string diagnostic;
+    try {
+        print.process();
+    } catch (const SlicingError &e) {
+        diagnostic = e.what();
+    } catch (const SlicingErrors &errors) {
+        for (const SlicingError &e : errors.errors_)
+            diagnostic += e.what();
+    }
+    CHECK(diagnostic.find("package ID is missing") != std::string::npos);
+}
+
+TEST_CASE("All-narrow internal scripted solid uses the native concentric substitution", "[Fill][ScriptedPlanePath]")
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({{"wall_loops", 0},
+                                   {"sparse_infill_density", "100%"},
+                                   {"internal_solid_infill_pattern", "scriptedplanepath"},
+                                   {"detect_narrow_internal_solid_infill", true},
+                                   {"top_shell_layers", 2},
+                                   {"bottom_shell_layers", 2},
+                                   {"top_shell_thickness", 0},
+                                   {"bottom_shell_thickness", 0},
+                                   {"layer_height", 0.2},
+                                   {"initial_layer_print_height", 0.2}});
+    config.set("internal_solid_infill_script_pattern", std::string("org.example.unresolved"));
+
+    Print print;
+    Model model;
+    Slic3r::Test::init_print({make_cube(0.6, 12, 2)}, print, model, config, nullptr, false);
+    CHECK_NOTHROW(print.process());
+    const SolidPlanePathSnapshot snapshot = solid_plane_path_snapshot(print);
+    CHECK(snapshot.path_count > 0);
+    CHECK(snapshot.roles.count(erSolidInfill) == 1);
+}

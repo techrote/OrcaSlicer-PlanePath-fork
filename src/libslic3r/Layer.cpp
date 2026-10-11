@@ -1,4 +1,5 @@
 #include "Layer.hpp"
+#include "Exception.hpp"
 #include "ClipperUtils.hpp"
 #include "Print.hpp"
 #include "Fill/Fill.hpp"
