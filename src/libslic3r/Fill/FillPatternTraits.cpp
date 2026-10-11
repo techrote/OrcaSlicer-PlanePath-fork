@@ -1,7 +1,7 @@
 #include "FillPatternTraits.hpp"
 
 #include "../PrintConfig.hpp"
-#include "../libslic3r.h"
+#include "../Exception.hpp"
 
 namespace Slic3r {
 
