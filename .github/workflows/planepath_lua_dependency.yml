@@ -13,6 +13,7 @@ on:
       - 'scripts/planepath/lua-runtime-tests/**'
       - 'src/libslic3r/Script/**'
       - '.github/workflows/planepath_lua_dependency.yml'
+      - '.gitattributes'
   pull_request:
     branches: [main]
     paths:
@@ -22,6 +23,7 @@ on:
       - 'scripts/planepath/lua-runtime-tests/**'
       - 'src/libslic3r/Script/**'
       - '.github/workflows/planepath_lua_dependency.yml'
+      - '.gitattributes'
   workflow_dispatch:
 
 permissions:
@@ -56,6 +58,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: false
+      - name: Verify Lua release evidence bytes survived checkout
+        shell: pwsh
+        run: |
+          $paths = @(
+            'deps/Lua/LICENSE.lua.txt',
+            'resources/licenses/Lua-5.5.1.txt',
+            'resources/licenses/Lua-5.5.1-SOURCE.txt'
+          )
+          foreach ($path in $paths) {
+            $tracked = (git rev-parse "HEAD:$path").Trim()
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $working = (git hash-object --no-filters $path).Trim()
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if ($tracked -ne $working) {
+              throw "Release evidence bytes changed during checkout: $path"
+            }
+          }
       - name: Verify bundled Lua licence is byte-identical to source notice
         shell: pwsh
         run: |
