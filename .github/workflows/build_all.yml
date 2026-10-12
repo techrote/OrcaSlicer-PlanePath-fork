@@ -1,6 +1,12 @@
 name: Build all
 
 on:
+  # PP-005 qualification branch only: exercise the retained full release matrix
+  # without changing the implementation PR. This trigger lives only on the
+  # disposable test-build-all/* branch.
+  push:
+    branches:
+      - 'test-build-all/**'
 # PlanePath fork policy: this expensive upstream multi-platform matrix is retained
 # as an explicit manual/release validation tool. Pull requests use planepath_ci.yml.
   workflow_dispatch: # allows for manual dispatch
