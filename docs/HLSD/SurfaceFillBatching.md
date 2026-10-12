@@ -24,7 +24,10 @@ Before computing the effective pattern or role for each non-void surface:
 These values are part of the batching key and are forwarded to `FillParams`.
 A stale key can both change emitted geometry/order and merge or split otherwise
 identical fill groups incorrectly. Reinitializing at the surface boundary is
-necessary even when no suitable pattern/role later assigns an override.
+necessary even when no suitable pattern/role later assigns an override. The
+collapsed-void fallback can synthesize a new internal-solid fill after normal
+surface traversal; because that path reuses the same scratch object, it invokes
+the same contextual reset before constructing the fallback fill.
 
 Other existing effective-pattern substitutions, rotation and centering rules,
 flow selection, per-pattern traits, serialization and factory dispatch are

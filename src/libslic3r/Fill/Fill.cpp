@@ -858,6 +858,10 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
 	std::set<SurfaceFillParams> 						set_surface_params;
 	std::vector<std::vector<const SurfaceFillParams*>> 	region_to_surface_params(layer.regions().size(), std::vector<const SurfaceFillParams*>());
     SurfaceFillParams									params;
+    auto reset_contextual_params = [&params]() {
+        params.fill_order = SurfaceFillOrder::Default;
+        params.smooth_factor = 0.;
+    };
     bool 												has_internal_voids = false;
 	const PrintObjectConfig&							object_config = layer.object()->config();
 
@@ -886,8 +890,7 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
 	        else {
 		        const PrintRegionConfig &region_config = layerm.region().config();
                 // Each surface starts with independent contextual fill settings.
-                params.fill_order = SurfaceFillOrder::Default;
-                params.smooth_factor = 0.;
+                reset_contextual_params();
 		        FlowRole extrusion_role = surface.is_top() ? frTopSolidInfill : (surface.is_solid() ? frSolidInfill : frInfill);
 		        bool     is_bridge 	    = layer.id() > 0 && surface.is_bridge();
 		        params.extruder 	 = layerm.region().extruder(extrusion_role);
@@ -1171,7 +1174,9 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
 	        		break;
 	        	}
 	        if (internal_solid_fill == nullptr) {
-	        	// Produce another solid fill.
+	        	// Produce another solid fill. This bypasses the surface traversal above,
+                // so neutralize the same contextual fields before reusing the scratch params.
+                reset_contextual_params();
 		        params.extruder 	 = layerm.region().extruder(frSolidInfill);
                 const auto top_pattern = layerm.region().config().top_surface_pattern;
                 if(top_pattern == ipMonotonic || top_pattern == ipMonotonicLine)
