@@ -31,7 +31,7 @@ does not search for system/PATH Lua.
   stress case, also used in the instrumented C source configuration.
 - `resources/licenses/`: complete Lua 5.5.1 MIT notice and build provenance.
 - `.github/workflows/planepath_lua_dependency.yml`: Linux, Windows
-  Release/Debug, macOS and full Lua-core + host ASan/UBSan qualification.
+  Release/Debug and full Lua-core + host ASan/UBSan checks.
 
 The original preserved surrogate packet remains at
 `checkpoints/prepass/PP-005/b1b0a100f2f62803/unpacked/`. Its Lua 5.4.7
@@ -54,24 +54,20 @@ results are *not* used as current acceptance evidence.
   only the PP-005 target and Catch2 registrations in the two overlapping
   CMakeLists; it does **not** alter the accepted pattern semantics.
 
-Do not treat passing targeted tests as full release acceptance.
+Passing targeted tests alone does not satisfy the gates below.
 
 ## Remaining acceptance gates — do not merge until complete
 
-- Confirm current/reconciled PR HEAD's full `PlanePath CI` (Linux and
-  Windows native full Orca + tests, source audit and conformance).
-- Complete distinct hostile-capability, allocator-boundary, cancellation,
-  stack/recursion, diagnostic and native exception final security review
-  on the *exact* integrated production source. Fix critical/high findings.
-- Validate Windows portable ZIP and NSIS packages, macOS actual
-  `.app` and Flatpak/FHS resource placement, source/licence equality and
-  absence of Lua shared runtime dependency; smoke on a clean host.
-- Confirm maintained Windows ARM64/clang-cl target if supported by CI.
-- Recheck source patch provenance, offline Flatpak archive use, and
-  cross-platform numeric normalization before adopting the PP-006 geometry
-  adapter. PP-005 itself must not create slicer infill or G-code.
-- Verify all required checks on the final commit, merge only after
-  acceptance, then verify `main` and close #8.
+- Full `PlanePath CI` passes on the final head (Linux and Windows full Orca
+  build, unit tests, source audit and PP-002 conformance).
+- Final security review of the production host: hostile capabilities,
+  allocator limits, cancellation, stack/recursion, diagnostics and native
+  exceptions. Fix critical/high findings.
+- PP-005 must not create slicer infill or G-code.
 
-If any essential gate cannot be exercised, retain draft PR #22 with
-explicitly recorded evidence; never infer it from a passing dependency build.
+Release packaging (installers, macOS `.app`, Flatpak/FHS layout, clean-host
+smoke tests, extra architectures) is **not** a PP-005 gate. It belongs to
+PP-017 ([#20](https://github.com/techrote/OrcaSlicer-PlanePath-fork/issues/20)).
+Packaging checks already run for PP-005 remain useful history but do not
+block this merge. Owner decision, 2026-10-13: no test builds or packaging
+work until a build contains something the owner can see or use.
