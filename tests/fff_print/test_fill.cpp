@@ -8,6 +8,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "libslic3r/ClipperUtils.hpp"
@@ -1777,93 +1778,191 @@ TEST_CASE("Solid native PlanePath does not inherit sparse smoothing", "[Fill][Pl
     CHECK(smooth.sequence == sharp.sequence);
 }
 
-TEST_CASE("Mixed native surface patterns preserve historical fill-order carry-over", "[Fill][PlanePathConformance][Regression]")
+TEST_CASE("Native surface fill order is isolated between pattern capabilities", "[Fill][PlanePathConformance][Regression]")
 {
-    auto config = DynamicPrintConfig::full_print_config();
-    config.set_deserialize_strict({{"sparse_infill_density", "100%"},
-                                   {"top_surface_pattern", "archimedeanchords"},
-                                   {"top_surface_fill_order", "outward"},
-                                   {"internal_solid_infill_pattern", "rectilinear"},
-                                   {"top_shell_layers", 2},
-                                   {"bottom_shell_layers", 2},
-                                   {"top_shell_thickness", 0},
-                                   {"bottom_shell_thickness", 0},
-                                   {"layer_height", 0.2},
-                                   {"initial_layer_print_height", 0.2}});
+    for (bool centered_first : {true, false})
+        for (bool top_surface : {true, false})
+            for (bool outward : {true, false}) {
+                DYNAMIC_SECTION("centered_first=" << centered_first << " top_surface=" << top_surface
+                                                   << " outward=" << outward) {
+                    const char *pattern_key = top_surface ? "top_surface_pattern" : "bottom_surface_pattern";
+                    const char *order_key = top_surface ? "top_surface_fill_order" : "bottom_surface_fill_order";
+                    const char *first_pattern = centered_first ? "archimedeanchords" : "hilbertcurve";
+                    const InfillPattern second_pattern = centered_first ? ipHilbertCurve : ipArchimedeanChords;
+                    const ExtrusionRole expected_role = top_surface ? erTopSolidInfill : erBottomSurface;
 
-    Print print;
-    Model model;
-    Slic3r::Test::init_print({make_cube(12, 12, 2)}, print, model, config, nullptr, false);
-    TriangleMesh second = make_cube(12, 12, 2);
-    second.translate(20, 0, 0);
-    ModelVolume *volume = model.objects.front()->add_volume(std::move(second));
-    volume->config.set_key_value("top_surface_pattern", new ConfigOptionEnum<InfillPattern>(ipHilbertCurve));
-    print.apply(model, config);
-    print.process();
+                    auto config = DynamicPrintConfig::full_print_config();
+                    config.set_deserialize_strict({{"sparse_infill_density", "100%"},
+                                                   {pattern_key, first_pattern},
+                                                   {order_key, outward ? "outward" : "default"},
+                                                   {"internal_solid_infill_pattern", "rectilinear"},
+                                                   {"top_shell_layers", 2},
+                                                   {"bottom_shell_layers", 2},
+                                                   {"top_shell_thickness", 0},
+                                                   {"bottom_shell_thickness", 0},
+                                                   {"layer_height", 0.2},
+                                                   {"initial_layer_print_height", 0.2}});
 
-    size_t carried_collections = 0;
-    for (const Layer *layer : print.objects().front()->layers())
-        for (const LayerRegion *region : layer->regions()) {
-            if (region->region().config().top_surface_pattern != ipHilbertCurve)
-                continue;
-            for (const ExtrusionEntity *entity : region->fills.entities) {
-                const auto *collection = dynamic_cast<const ExtrusionEntityCollection *>(entity);
-                REQUIRE(collection != nullptr);
-                const ExtrusionEntityCollection flat = collection->flatten();
-                bool contains_top = false;
-                for (const ExtrusionEntity *child : flat.entities)
-                    contains_top |= child->role() == erTopSolidInfill;
-                if (!contains_top)
-                    continue;
-                // PP-003 intentionally preserves SurfaceFillParams reuse: the preceding
-                // Archimedean top surface leaves Outward set for this unsupported Hilbert row.
-                CHECK(collection->no_sort);
-                ++carried_collections;
+                    Print print;
+                    Model model;
+                    Slic3r::Test::init_print({make_cube(12, 12, 2)}, print, model, config, nullptr, false);
+                    TriangleMesh second = make_cube(12, 12, 2);
+                    second.translate(20, 0, 0);
+                    ModelVolume *volume = model.objects.front()->add_volume(std::move(second));
+                    volume->config.set_key_value(pattern_key, new ConfigOptionEnum<InfillPattern>(second_pattern));
+                    print.apply(model, config);
+                    print.process();
+
+                    size_t archimedean_collections = 0;
+                    size_t hilbert_collections = 0;
+                    for (const Layer *layer : print.objects().front()->layers())
+                        for (const LayerRegion *region : layer->regions()) {
+                            const auto &region_config = region->region().config();
+                            const InfillPattern pattern = top_surface ? region_config.top_surface_pattern.value
+                                                                      : region_config.bottom_surface_pattern.value;
+                            if (pattern != ipArchimedeanChords && pattern != ipHilbertCurve)
+                                continue;
+                            for (const ExtrusionEntity *entity : region->fills.entities) {
+                                const auto *collection = dynamic_cast<const ExtrusionEntityCollection *>(entity);
+                                REQUIRE(collection != nullptr);
+                                const ExtrusionEntityCollection flat = collection->flatten();
+                                bool contains_surface = false;
+                                for (const ExtrusionEntity *child : flat.entities)
+                                    contains_surface |= child->role() == expected_role;
+                                if (!contains_surface)
+                                    continue;
+
+                                // Only the supported center-based pattern with an explicit
+                                // order may suppress sorting/reversal in the final extrusion.
+                                CHECK(collection->no_sort == (pattern == ipArchimedeanChords && outward));
+                                if (pattern == ipArchimedeanChords)
+                                    ++archimedean_collections;
+                                else {
+                                    ++hilbert_collections;
+                                    for (const ExtrusionEntity *child : flat.entities)
+                                        if (child->role() == expected_role)
+                                            CHECK(child->can_reverse());
+                                }
+                            }
+                        }
+                    REQUIRE(archimedean_collections > 0);
+                    REQUIRE(hilbert_collections > 0);
+                }
             }
-        }
-    REQUIRE(carried_collections > 0);
 }
 
-TEST_CASE("Sparse smoothing carry-over into a later solid native fill remains unchanged", "[Fill][PlanePathConformance][Regression]")
+TEST_CASE("Effective native surface order remains part of fill batching identity", "[Fill][PlanePathConformance][Regression]")
 {
-    auto slice = [](const std::string &smooth_factor) {
-        auto config = DynamicPrintConfig::full_print_config();
-        config.set_deserialize_strict({{"sparse_infill_pattern", "hilbertcurve"},
-                                       {"sparse_infill_density", "15%"},
-                                       {"sparse_infill_smooth_factor", smooth_factor},
-                                       {"internal_solid_infill_pattern", "hilbertcurve"},
-                                       {"top_surface_pattern", "hilbertcurve"},
-                                       {"bottom_surface_pattern", "hilbertcurve"},
-                                       {"top_shell_layers", 0},
-                                       {"bottom_shell_layers", 0},
-                                       {"top_shell_thickness", 0},
-                                       {"bottom_shell_thickness", 0},
-                                       {"layer_height", 0.2},
-                                       {"initial_layer_print_height", 0.2}});
+    for (bool outward_first : {true, false}) {
+        DYNAMIC_SECTION("outward_first=" << outward_first) {
+            auto config = DynamicPrintConfig::full_print_config();
+            config.set_deserialize_strict({{"sparse_infill_density", "100%"},
+                                           {"top_surface_pattern", "archimedeanchords"},
+                                           {"top_surface_fill_order", outward_first ? "outward" : "default"},
+                                           {"top_shell_layers", 2},
+                                           {"bottom_shell_layers", 2},
+                                           {"top_shell_thickness", 0},
+                                           {"bottom_shell_thickness", 0},
+                                           {"layer_height", 0.2},
+                                           {"initial_layer_print_height", 0.2}});
 
-        Print print;
-        Model model;
-        Slic3r::Test::init_print({make_cube(12, 12, 2)}, print, model, config, nullptr, false);
-        TriangleMesh second = make_cube(12, 12, 2);
-        second.translate(20, 0, 0);
-        ModelVolume *volume = model.objects.front()->add_volume(std::move(second));
-        volume->config.set_key_value("sparse_infill_density", new ConfigOptionPercent(100.));
-        volume->config.set_key_value("top_shell_layers", new ConfigOptionInt(2));
-        volume->config.set_key_value("bottom_shell_layers", new ConfigOptionInt(2));
-        print.apply(model, config);
-        print.process();
-        return solid_plane_path_snapshot(print);
-    };
+            Print print;
+            Model model;
+            Slic3r::Test::init_print({make_cube(12, 12, 2)}, print, model, config, nullptr, false);
+            TriangleMesh second = make_cube(12, 12, 2);
+            second.translate(20, 0, 0);
+            ModelVolume *volume = model.objects.front()->add_volume(std::move(second));
+            volume->config.set_key_value(
+                "top_surface_fill_order",
+                new ConfigOptionEnum<SurfaceFillOrder>(outward_first ? SurfaceFillOrder::Default : SurfaceFillOrder::Outward));
+            print.apply(model, config);
+            print.process();
 
-    const SolidPlanePathSnapshot sharp  = slice("0%");
-    const SolidPlanePathSnapshot smooth = slice("100%");
-    REQUIRE(sharp.path_count > 0);
-    REQUIRE(smooth.path_count > 0);
+            size_t default_collections = 0;
+            size_t outward_collections = 0;
+            for (const Layer *layer : print.objects().front()->layers())
+                for (const LayerRegion *region : layer->regions()) {
+                    const auto &region_config = region->region().config();
+                    if (region_config.top_surface_pattern != ipArchimedeanChords)
+                        continue;
+                    const bool outward = region_config.top_surface_fill_order.value == SurfaceFillOrder::Outward;
+                    for (const ExtrusionEntity *entity : region->fills.entities) {
+                        const auto *collection = dynamic_cast<const ExtrusionEntityCollection *>(entity);
+                        REQUIRE(collection != nullptr);
+                        const ExtrusionEntityCollection flat = collection->flatten();
+                        bool contains_top = false;
+                        for (const ExtrusionEntity *child : flat.entities)
+                            contains_top |= child->role() == erTopSolidInfill;
+                        if (!contains_top)
+                            continue;
+                        CHECK(collection->no_sort == outward);
+                        if (outward)
+                            ++outward_collections;
+                        else
+                            ++default_collections;
+                    }
+                }
+            REQUIRE(default_collections > 0);
+            REQUIRE(outward_collections > 0);
+        }
+    }
+}
 
-    // This difference is the pre-existing state carry-over characterized by the PP-003 prepass.
-    // The neutral trait refactor must not silently reset smooth_factor on the later solid region.
-    const bool geometry_changed = smooth.point_count != sharp.point_count || smooth.sequence != sharp.sequence;
-    CHECK(geometry_changed);
+TEST_CASE("Sparse native smoothing cannot change the geometry of another solid region", "[Fill][PlanePathConformance][Regression]")
+{
+    for (bool sparse_first : {true, false}) {
+        DYNAMIC_SECTION("sparse_first=" << sparse_first) {
+            auto slice = [sparse_first](const char *smooth_factor) {
+                auto config = DynamicPrintConfig::full_print_config();
+                config.set_deserialize_strict({{"sparse_infill_pattern", "hilbertcurve"},
+                                               {"sparse_infill_density", sparse_first ? "15%" : "100%"},
+                                               {"sparse_infill_smooth_factor", smooth_factor},
+                                               {"internal_solid_infill_pattern", "hilbertcurve"},
+                                               {"top_surface_pattern", "hilbertcurve"},
+                                               {"bottom_surface_pattern", "hilbertcurve"},
+                                               {"top_shell_layers", sparse_first ? 0 : 2},
+                                               {"bottom_shell_layers", sparse_first ? 0 : 2},
+                                               {"top_shell_thickness", 0},
+                                               {"bottom_shell_thickness", 0},
+                                               {"layer_height", 0.2},
+                                               {"initial_layer_print_height", 0.2}});
+
+                Print print;
+                Model model;
+                Slic3r::Test::init_print({make_cube(12, 12, 2)}, print, model, config, nullptr, false);
+                TriangleMesh second = make_cube(12, 12, 2);
+                second.translate(20, 0, 0);
+                ModelVolume *volume = model.objects.front()->add_volume(std::move(second));
+                volume->config.set_key_value("sparse_infill_density",
+                                             new ConfigOptionPercent(sparse_first ? 100. : 15.));
+                volume->config.set_key_value("top_shell_layers", new ConfigOptionInt(sparse_first ? 2 : 0));
+                volume->config.set_key_value("bottom_shell_layers", new ConfigOptionInt(sparse_first ? 2 : 0));
+                print.apply(model, config);
+                print.process();
+                return std::make_pair(solid_plane_path_snapshot(print), sparse_infill_shape(print));
+            };
+
+            const auto sharp = slice("0%");
+            const auto smooth = slice("100%");
+            REQUIRE(sharp.first.path_count > 0);
+            REQUIRE(smooth.first.path_count > 0);
+            REQUIRE(sharp.second.path_count > 0);
+            REQUIRE(smooth.second.path_count > 0);
+
+            // Changing sparse smoothing still changes sparse Hilbert, so the fixture
+            // exercises the option instead of passing vacuously.
+            const bool sparse_changed = sharp.second.point_count != smooth.second.point_count ||
+                                        sharp.second.sequence != smooth.second.sequence;
+            CHECK(sparse_changed);
+
+            // Solid Hilbert's geometry and final extrusion order are independent of
+            // sparse smoothing, regardless of which region was visited first.
+            CHECK(smooth.first.roles == sharp.first.roles);
+            CHECK(smooth.first.path_count == sharp.first.path_count);
+            CHECK(smooth.first.point_count == sharp.first.point_count);
+            CHECK(smooth.first.sequence == sharp.first.sequence);
+        }
+    }
 }
 
 TEST_CASE("Native Hilbert final extrusion order remains optimizable by default", "[Fill][PlanePathConformance]")
