@@ -1505,7 +1505,9 @@ TEST_CASE("Three scripted PlanePath contexts preserve independent config identit
     FullPrintConfig full;
     full.apply(cfg);
     for (const auto &field : fields) {
-        CHECK(full.opt_string(field.first) == field.second);
+        const auto *full_option = full.option<ConfigOptionString>(field.first);
+        REQUIRE(full_option != nullptr);
+        CHECK(full_option->value == field.second);
         CHECK(cfg.opt_string(field.first) == field.second);
     }
     CHECK(validate(full, true).count("top_surface_script_pattern") == 0);
