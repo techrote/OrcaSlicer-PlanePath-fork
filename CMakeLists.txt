@@ -986,6 +986,33 @@ endforeach()
 
 find_package(NLopt 1.4 REQUIRED)
 
+# PP-005: resolve ONLY the exact, built Orca dependency, never system Lua
+# or CMake's generic FindLua. This precedes add_subdirectory(src).
+if(NOT CMAKE_PREFIX_PATH)
+    message(FATAL_ERROR "PlanePathLua requires the installed Orca dependency prefix")
+endif()
+if(PLANEPATH_LUA_PREFIX)
+    set(_planepath_lua_prefix "${PLANEPATH_LUA_PREFIX}")
+else()
+    set(_planepath_dependency_prefixes ${CMAKE_PREFIX_PATH})
+    list(GET _planepath_dependency_prefixes 0 _planepath_lua_prefix)
+endif()
+set(_planepath_lua_config "${_planepath_lua_prefix}/lib/cmake/PlanePathLua")
+if(NOT EXISTS "${_planepath_lua_config}/PlanePathLuaConfig.cmake")
+    message(FATAL_ERROR "Pinned PlanePathLua is absent: ${_planepath_lua_config}")
+endif()
+set(PlanePathLua_DIR "${_planepath_lua_config}" CACHE PATH "Orca pinned Lua config" FORCE)
+find_package(PlanePathLua 5.5.1 EXACT CONFIG REQUIRED
+    PATHS "${_planepath_lua_config}" NO_DEFAULT_PATH)
+if(NOT PlanePathLua_REVISION STREQUAL "5.5.1-pp1")
+    message(FATAL_ERROR "Unreviewed PlanePathLua revision: ${PlanePathLua_REVISION}")
+endif()
+get_target_property(_planepath_lua_type PlanePathLua::Lua TYPE)
+if(NOT _planepath_lua_type STREQUAL "STATIC_LIBRARY")
+    message(FATAL_ERROR "Only the patched static PlanePath Lua archive is accepted")
+endif()
+
+
 # Use bundled Python from deps instead of system Python
 set(_bundled_python_version "3.12.13")
 set(_bundled_python_abi "312")

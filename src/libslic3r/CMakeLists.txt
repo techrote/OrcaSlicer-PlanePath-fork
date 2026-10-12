@@ -576,6 +576,16 @@ add_library(libslic3r STATIC ${lisbslic3r_sources}
     "${CMAKE_CURRENT_BINARY_DIR}/libslic3r_version.h"
     ${OpenVDBUtils_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${lisbslic3r_sources})
+# PP-005: one reusable production sandbox implementation; no UI or geometry
+# adapter is exposed before PP-006/007. Lua stays private to this target.
+add_library(planepath_script_runtime STATIC
+    Script/ScriptRuntime.hpp
+    Script/ScriptRuntime.cpp)
+target_include_directories(planepath_script_runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(planepath_script_runtime PRIVATE PlanePathLua::Lua)
+target_link_libraries(libslic3r PRIVATE planepath_script_runtime)
+
+
 
 if (SLIC3R_STATIC)
     set(CGAL_Boost_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)

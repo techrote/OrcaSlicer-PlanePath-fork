@@ -195,6 +195,19 @@ function relocate_python_runtime() {
     fi
 }
 
+# PP-005: the actual release .app must retain the reviewed Lua MIT notice.
+# A build-tree resource symlink is not packaging evidence: check the *copied*
+# Contents/Resources directory and the universal merger's final output.
+function verify_lua_notice() {
+    local app="$1"
+    local packaged="$app/Contents/Resources/licenses/Lua-5.5.1.txt"
+    local original="$PROJECT_DIR/deps/Lua/LICENSE.lua.txt"
+    if [ ! -f "$packaged" ] || ! cmp -s "$original" "$packaged"; then
+        echo "ERROR: PP-005 patched Lua licence missing or altered in $app" >&2
+        exit 1
+    fi
+}
+
 # --- Bundled Python runtime verification --------------------------------------
 # Relocation is handled at the source: deps/python3/python3.cmake stamps
 # libpython with an @rpath id and src/CMakeLists.txt gives the app a matching
@@ -295,6 +308,7 @@ function build_slicer() {
             rm ./OrcaSlicer.app/Contents/Resources
             cp -R "$resources_path" ./OrcaSlicer.app/Contents/Resources
             relocate_python_runtime ./OrcaSlicer.app
+            verify_lua_notice ./OrcaSlicer.app
             # delete .DS_Store file
             find ./OrcaSlicer.app/ -name '.DS_Store' -delete
 
@@ -364,6 +378,7 @@ function build_universal() {
     lipo_dir "$UNIVERSAL_APP" "$X86_64_APP"
     echo "Universal OrcaSlicer.app created at $UNIVERSAL_APP"
     verify_python_runtime "$UNIVERSAL_APP"
+    verify_lua_notice "$UNIVERSAL_APP"
 
     # Create universal binary for profile validator if it exists
     ARM64_VALIDATOR="$PROJECT_DIR/build/arm64/OrcaSlicer/OrcaSlicer_profile_validator.app"

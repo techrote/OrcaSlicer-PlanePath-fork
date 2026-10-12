@@ -1,0 +1,151 @@
+name: PP-005 pinned Lua dependency
+
+# Targeted proof of the exact Lua source/patch/install and import contract.
+# Full OrcaSlicer CI remains the PR merge gate; these jobs avoid unrelated
+# dependency rebuilds while iterating on the Lua superbuild recipe.
+on:
+  push:
+    branches: ['pp-005-*']
+    paths:
+      - 'deps/Lua/**'
+      - 'deps/CMakeLists.txt'
+      - 'scripts/planepath/lua-dep-smoke/**'
+      - 'scripts/planepath/lua-runtime-tests/**'
+      - 'src/libslic3r/Script/**'
+      - '.github/workflows/planepath_lua_dependency.yml'
+      - '.gitattributes'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deps/Lua/**'
+      - 'deps/CMakeLists.txt'
+      - 'scripts/planepath/lua-dep-smoke/**'
+      - 'scripts/planepath/lua-runtime-tests/**'
+      - 'src/libslic3r/Script/**'
+      - '.github/workflows/planepath_lua_dependency.yml'
+      - '.gitattributes'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pp005-lua-dep-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pinned-static-lua:
+    name: Lua 5.5.1 patched dependency and static import (${{ matrix.os }} / ${{ matrix.config }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            config: Release
+          - os: windows-latest
+            config: Release
+          - os: windows-latest
+            config: Debug
+          - os: macos-15
+            config: Release
+          - os: macos-15-intel
+            config: Release
+          - os: windows-11-arm
+            config: Release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Verify Lua release evidence bytes survived checkout
+        shell: pwsh
+        run: |
+          $paths = @(
+            'deps/Lua/LICENSE.lua.txt',
+            'resources/licenses/Lua-5.5.1.txt',
+            'resources/licenses/Lua-5.5.1-SOURCE.txt'
+          )
+          foreach ($path in $paths) {
+            $tracked = (git rev-parse "HEAD:$path").Trim()
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $working = (git hash-object --no-filters $path).Trim()
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if ($tracked -ne $working) {
+              throw "Release evidence bytes changed during checkout: $path"
+            }
+          }
+      - name: Verify bundled Lua licence is byte-identical to source notice
+        shell: pwsh
+        run: |
+          $source = (Get-FileHash deps/Lua/LICENSE.lua.txt -Algorithm SHA256).Hash
+          $shipped = (Get-FileHash resources/licenses/Lua-5.5.1.txt -Algorithm SHA256).Hash
+          if ($source -ne $shipped) { throw "Lua bundled licence notice differs from pinned source" }
+      - name: Configure Orca dependency superbuild
+        shell: pwsh
+        run: |
+          cmake -S deps -B .pp005-deps -DSLIC3R_CAD=OFF -DPLANEPATH_LUA_ONLY=ON -DCMAKE_INSTALL_LIBDIR=lib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and install the exact patched Lua source
+        shell: pwsh
+        run: |
+          cmake --build .pp005-deps --target dep_Lua --config ${{ matrix.config }} --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Configure imported-target smoke test
+        shell: pwsh
+        run: |
+          $prefix = Join-Path $env:GITHUB_WORKSPACE '.pp005-deps/OrcaSlicer_dep/usr/local'
+          cmake -S scripts/planepath/lua-dep-smoke -B .pp005-smoke -DPLANEPATH_LUA_PREFIX="$prefix"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and run the linked static Lua smoke test
+        shell: pwsh
+        run: |
+          cmake --build .pp005-smoke --config ${{ matrix.config }} --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir .pp005-smoke -C ${{ matrix.config }} --output-on-failure
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Configure production sandbox tests
+        shell: pwsh
+        run: |
+          $prefix = Join-Path $env:GITHUB_WORKSPACE '.pp005-deps/OrcaSlicer_dep/usr/local'
+          cmake -S scripts/planepath/lua-runtime-tests -B .pp005-runtime -DPLANEPATH_LUA_PREFIX="$prefix"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and run production sandbox adversarial tests
+        shell: pwsh
+        run: |
+          cmake --build .pp005-runtime --config ${{ matrix.config }} --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir .pp005-runtime -C ${{ matrix.config }} --output-on-failure
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  pinned-core-sanitizers:
+    name: Patched Lua C core + production host ASan/UBSan (Ubuntu)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Build instrumented exact patched Lua C sources
+        shell: bash
+        run: |
+          cmake -S deps -B .pp005-asan-deps -DSLIC3R_CAD=OFF -DPLANEPATH_LUA_ONLY=ON -DPLANEPATH_LUA_SANITIZE=ON -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build .pp005-asan-deps --target dep_Lua --config Release --parallel 2
+      - name: Run patched core GC regression under ASan/UBSan
+        shell: bash
+        run: |
+          prefix="$GITHUB_WORKSPACE/.pp005-asan-deps/OrcaSlicer_dep/usr/local"
+          cmake -S scripts/planepath/lua-dep-smoke -B .pp005-asan-gc -DPLANEPATH_LUA_PREFIX="$prefix" -DCMAKE_BUILD_TYPE=Release
+          cmake --build .pp005-asan-gc --config Release --parallel 2
+          ctest --test-dir .pp005-asan-gc -C Release --output-on-failure
+      - name: Run production sandbox adversarial suite under ASan/UBSan
+        shell: bash
+        run: |
+          prefix="$GITHUB_WORKSPACE/.pp005-asan-deps/OrcaSlicer_dep/usr/local"
+          cmake -S scripts/planepath/lua-runtime-tests -B .pp005-asan-runtime -DPLANEPATH_LUA_PREFIX="$prefix" -DCMAKE_BUILD_TYPE=Release -DPLANEPATH_SANITIZE=ON
+          cmake --build .pp005-asan-runtime --config Release --parallel 2
+          ctest --test-dir .pp005-asan-runtime -C Release --output-on-failure

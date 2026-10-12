@@ -10,3 +10,9 @@
 # resume after `call :label`. With LF endings that offset can land wrong and the
 # label lookup fails, so keep these CRLF whatever the platform.
 *.bat text eol=crlf
+
+# PP-005: these files are release evidence copied verbatim into distributables.
+# Do not let a Windows checkout rewrite the reviewed repository bytes.
+deps/Lua/LICENSE.lua.txt text eol=lf
+resources/licenses/Lua-5.5.1.txt text eol=lf
+resources/licenses/Lua-5.5.1-SOURCE.txt text eol=lf
