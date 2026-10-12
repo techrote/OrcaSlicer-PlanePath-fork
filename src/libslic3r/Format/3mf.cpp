@@ -3149,7 +3149,9 @@ ModelVolumeType type_from_string(const std::string &s)
 
                 // stores object's config data
                 for (const std::string& key : obj->config.keys()) {
-                    stream << "  <" << METADATA_TAG << " " << TYPE_ATTR << "=\"" << OBJECT_TYPE << "\" " << KEY_ATTR << "=\"" << key << "\" " << VALUE_ATTR << "=\"" << obj->config.opt_serialize(key) << "\"/>\n";
+                    const std::string value = obj->config.opt_serialize(key);
+                    // Config serialization is C-style, not XML; escape before embedding it in an attribute.
+                    stream << "  <" << METADATA_TAG << " " << TYPE_ATTR << "=\"" << OBJECT_TYPE << "\" " << KEY_ATTR << "=\"" << key << "\" " << VALUE_ATTR << "=\"" << xml_escape_double_quotes_attribute_value(value) << "\"/>\n";
                 }
 
                 for (const ModelVolume* volume : obj_metadata.second.object->volumes) {

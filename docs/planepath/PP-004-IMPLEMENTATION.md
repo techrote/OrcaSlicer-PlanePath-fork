@@ -42,7 +42,9 @@ by strict config validation.
 
 The options use Orca's existing native config/print-preset/3MF key pathways.
 BBS/Orca generic object and volume overrides are covered by dedicated 3MF
-round-trip regression tests. The legacy Prusa volume importer deliberately
+round-trip regression tests. Both model-config exporters XML-escape C-style
+serialized object option values before placing them in attributes, matching the
+existing volume path so JSON script parameters cannot make project XML malformed. The legacy Prusa volume importer deliberately
 whitelists certain keys and drops unrelated generic option overrides (as
 characterized by `test_precise_seam_3mf.cpp`); this feature does not modify
 that legacy import policy. Global project config round trips are exercised
