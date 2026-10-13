@@ -41,14 +41,24 @@ by strict config validation.
 ### Persistence scope
 
 The options use Orca's existing native config/print-preset/3MF key pathways.
-BBS/Orca generic object and volume overrides are covered by dedicated 3MF
-round-trip regression tests. Both model-config exporters XML-escape C-style
-serialized object option values before placing them in attributes, matching the
-existing volume path so JSON script parameters cannot make project XML malformed. The legacy Prusa volume importer deliberately
-whitelists certain keys and drops unrelated generic option overrides (as
-characterized by `test_precise_seam_3mf.cpp`); this feature does not modify
-that legacy import policy. Global project config round trips are exercised
-for both formats.
+BBS/Orca project persistence is covered end-to-end for global process config plus
+generic object and volume `ModelConfig` overrides. Both model-config exporters
+XML-escape C-style serialized object option values before placing them in
+attributes, matching the existing volume path so JSON script parameters cannot
+make project XML malformed.
+
+The legacy Prusa-format importer is intentionally narrower and PP-004 does not
+change that policy. In `Format/3mf.cpp::_3MF_Importer::_load_model_from_file()`,
+the block that would read `Metadata/Slic3r_PE.config` is commented out and the
+code explicitly says it will "only read the model config for Prusa 3mf".
+`_handle_start_config_metadata()` then filters object/volume metadata through a
+fixed legacy `valid_keys` list (for example name, transforms, extruder and
+modifier), so the PP-004 generic keys cannot currently be restored by that
+backend. Regression coverage proves the Prusa writer does serialize the sentinel
+and companion fields into the archive, and separately proves the importer leaves
+their process defaults / drops their non-whitelisted overrides. This is recorded
+as an existing backend limitation rather than reactivating broad Prusa project
+settings import inside PP-004.
 
 ### Qualification
 
