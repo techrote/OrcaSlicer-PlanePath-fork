@@ -37,9 +37,9 @@ def native_patterns(root: Path) -> list[str]:
         raise RuntimeError("could not locate InfillPattern enum in PrintConfig.hpp")
     names = re.findall(r"\bip[A-Za-z0-9_]+\b", match.group("body"))
     names = list(dict.fromkeys(names))
-    if not names:
-        raise RuntimeError("InfillPattern enum contained no native entries")
-    return names
+    if len(names) != 32 or names[-1] != "ipScriptedPlanePath":
+        raise RuntimeError("Expected 31 unchanged native values plus the appended scripted sentinel")
+    return names[:-1]
 
 
 def switch_blocks(lines: list[str], token_re: re.Pattern[str]) -> list[dict[str, object]]:
@@ -92,7 +92,7 @@ def main() -> int:
 
     root = Path(args.repo).resolve()
     patterns = native_patterns(root)
-    token_re = re.compile(r"\b(?:" + "|".join(map(re.escape, patterns + ["ipCount"])) + r")\b")
+    token_re = re.compile(r"\b(?:" + "|".join(map(re.escape, patterns + ["ipScriptedPlanePath", "ipCount"])) + r")\b")
 
     references: list[dict[str, object]] = []
     switches: list[dict[str, object]] = []
@@ -143,6 +143,8 @@ def main() -> int:
     inventory = {
         "head": head,
         "native_pattern_count": len(patterns),
+        "compiled_scripted_sentinels": ["ipScriptedPlanePath"],
+        "compiled_pattern_count": len(patterns) + 1,
         "native_patterns": patterns,
         "source_files_scanned": scanned,
         "reference_count": len(references),
@@ -163,7 +165,7 @@ def main() -> int:
 
     print(
         "PP-003 source audit: "
-        f"{len(patterns)} native patterns; {scanned} source files; "
+        f"{len(patterns)} native patterns + 1 scripted sentinel; {scanned} source files; "
         f"{len(references)} references; {len(switches)} enum switches; "
         f"{len(multi_pattern_expressions)} multi-pattern expression lines; "
         f"{len(literal_virtual_capabilities)} literal virtual capability returns."

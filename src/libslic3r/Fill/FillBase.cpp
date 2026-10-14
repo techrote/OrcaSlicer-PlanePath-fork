@@ -33,6 +33,24 @@
 
 namespace Slic3r {
 
+// PP-004: Constructible but deliberately unresolved. Unlike InfillFailedException,
+// SlicingError cannot be swallowed as a successful slice with missing infill.
+class FillUnresolvedScriptedPlanePath final : public Fill
+{
+public:
+    Fill *clone() const override { return new FillUnresolvedScriptedPlanePath(*this); }
+    bool is_self_crossing() override { throw SlicingError("Scripted PlanePath self-crossing trait is unresolved"); }
+    Polylines fill_surface(const Surface *, const FillParams &) override {
+        throw SlicingError("Scripted PlanePath pattern unresolved (PP-006/007 required)");
+    }
+    ThickPolylines fill_surface_arachne(const Surface *, const FillParams &) override {
+        throw SlicingError("Scripted PlanePath pattern unresolved (PP-006/007 required)");
+    }
+    void fill_surface_extrusion(const Surface *, const FillParams &, ExtrusionEntitiesPtr &) override {
+        throw SlicingError("Scripted PlanePath pattern unresolved (PP-006/007 required)");
+    }
+};
+
 //BBS: 0% of sparse_infill_line_width, no anchor at the start of sparse infill
 float Fill::infill_anchor = 400;
 //BBS: 20mm
@@ -69,6 +87,7 @@ Fill* Fill::new_from_type(const InfillPattern type)
     case ipLightning:           return new FillLightning::Filler();
     // BBS: for internal solid infill only
     case ipConcentricInternal:  return new FillConcentricInternal();
+    case ipScriptedPlanePath:  return new FillUnresolvedScriptedPlanePath();
     // BBS: for bottom and top surface only
     // Orca: Replace BBS implementation with Prusa implementation
     case ipMonotonicLine:       return new FillMonotonicLines();
@@ -90,7 +109,8 @@ bool Fill::use_bridge_flow(const InfillPattern type)
 {
     // PP-003: bridge-flow is a native capability, not something that requires constructing
     // every filler during static initialization. This checked lookup also rejects invalid enums.
-    return native_fill_pattern_traits(type).pattern_bridge_flow;
+    // No static bridge policy is invented for an unresolved package.
+    return type == ipScriptedPlanePath ? false : native_fill_pattern_traits(type).pattern_bridge_flow;
 }
 
 Polylines Fill::fill_surface(const Surface *surface, const FillParams &params)

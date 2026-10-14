@@ -370,3 +370,87 @@ TEST_CASE("Seam metadata restores only recognized modes on compatible base types
         CHECK_FALSE(helper.config.has("notes"));
     }
 }
+
+
+// PP-004: Orca/BBS projects support full process + ModelConfig round trips.
+// The legacy Prusa importer intentionally does not read Metadata/Slic3r_PE.config
+// and filters model metadata to a fixed legacy whitelist. For that backend, prove
+// the writer persists the PP-004 fields, then characterize the importer policy
+// without changing it as part of this feature.
+TEST_CASE("Scripted PlanePath config survives supported 3MF project surfaces", "[3mf][ScriptedPlanePath]")
+{
+    const auto backend = GENERATE(Backend::Bbs, Backend::Prusa);
+    CAPTURE(int(backend));
+    Scene source;
+    source.populate(false);
+    const std::array<const char *, 3> pattern_keys{{
+        "top_surface_pattern", "bottom_surface_pattern", "internal_solid_infill_pattern"
+    }};
+    for (const char *key : pattern_keys)
+        source.config.set_key_value(key, new ConfigOptionEnum<InfillPattern>(ipScriptedPlanePath));
+    const std::array<std::pair<const char*,const char*>, 6> values{{
+        {"top_surface_script_pattern", "org.example.moore"},
+        {"top_surface_script_params", R"({"z":2,"a":1})"},
+        {"bottom_surface_script_pattern", "org.example.peano"},
+        {"bottom_surface_script_params", R"({"b":2})"},
+        {"internal_solid_infill_script_pattern", "org.example.hilbert"},
+        {"internal_solid_infill_script_params", R"({"c":3})"}
+    }};
+    for (const auto &entry : values) {
+        source.config.set_key_value(entry.first, new ConfigOptionString(entry.second));
+        source.model.objects.front()->config.set_key_value(entry.first, new ConfigOptionString(entry.second));
+        source.model.objects.front()->volumes.front()->config.set_key_value(entry.first, new ConfigOptionString(entry.second));
+    }
+
+    ScopedTemporaryFile file(".3mf");
+    save(file.string(), backend, source);
+
+    if (backend == Backend::Prusa) {
+        // The exporter writes all generic process options into Slic3r_PE.config.
+        Archive archive = read_archive(file.string());
+        const auto print_cfg = std::find_if(archive.begin(), archive.end(),
+            [](const auto &entry) { return entry.first == "Metadata/Slic3r_PE.config"; });
+        REQUIRE(print_cfg != archive.end());
+        for (const char *key : pattern_keys)
+            CHECK(print_cfg->second.find("; " + std::string(key) + " = " + source.config.opt_serialize(key) + "\n") != std::string::npos);
+        for (const auto &entry : values)
+            CHECK(print_cfg->second.find("; " + std::string(entry.first) + " = " + source.config.opt_serialize(entry.first) + "\n") != std::string::npos);
+
+        // Object/volume options are likewise present in the written model metadata;
+        // the reader's fixed valid_keys whitelist deliberately filters them on import.
+        const std::string &xml = model_xml(archive, backend);
+        for (const auto &entry : values)
+            CHECK(xml.find("key=\"" + std::string(entry.first) + "\"") != std::string::npos);
+    }
+
+    Scene destination;
+    load(file.string(), backend, destination);
+
+    if (backend == Backend::Bbs) {
+        for (const char *key : pattern_keys)
+            CHECK(destination.config.opt_enum<InfillPattern>(key) == ipScriptedPlanePath);
+        for (const auto &entry : values) {
+            const std::string expected = std::string(entry.first) == "top_surface_script_params"
+                ? R"({"a":1,"z":2})" : entry.second;
+            CHECK(destination.config.opt_string(entry.first) == expected);
+
+            const auto &obj = *destination.model.objects.front();
+            REQUIRE(obj.config.has(entry.first));
+            CHECK(obj.config.get().opt_string(entry.first) == expected);
+            const auto &vol = *obj.volumes.front();
+            REQUIRE(vol.config.has(entry.first));
+            CHECK(vol.config.get().opt_string(entry.first) == expected);
+        }
+    } else {
+        // Current Orca policy for imported Prusa 3MFs: process config is not read,
+        // and non-whitelisted object/volume metadata is dropped. Keep those defaults inert.
+        for (const char *key : pattern_keys)
+            CHECK(destination.config.opt_enum<InfillPattern>(key) != ipScriptedPlanePath);
+        for (const auto &entry : values) {
+            const std::string expected_default = std::string(entry.first).find("_params") != std::string::npos ? "{}" : "";
+            CHECK(destination.config.opt_string(entry.first) == expected_default);
+            CHECK_FALSE(destination.model.objects.front()->config.has(entry.first));
+            CHECK_FALSE(destination.model.objects.front()->volumes.front()->config.has(entry.first));
+        }
+    }
+}

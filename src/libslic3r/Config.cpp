@@ -35,8 +35,30 @@ using namespace nlohmann;
 //FIXME for GCodeFlavor and gcfMarlin (for forward-compatibility conversion)
 // This is not nice, likely it would be better to pass the ConfigSubstitutionContext to handle_legacy().
 #include "PrintConfig.hpp"
+#include "Fill/ScriptedPlanePathIdentity.hpp"
 
 namespace Slic3r {
+
+// PP-004: all Orca's generic serialized config surfaces (INI, print preset JSON,
+// object/volume ModelConfig 3MF) pass through opt_serialize or save_to_json.
+// Canonicalize syntactically valid parameter objects at both boundaries. Invalid
+// *dormant* values stay reversible so a native preset's slicing is unaffected;
+// active invalid values are rejected by PrintConfig::validate/group_fills.
+static bool is_scripted_plane_path_params_key(const std::string &key)
+{
+    return key == "top_surface_script_params" ||
+           key == "bottom_surface_script_params" ||
+           key == "internal_solid_infill_script_params";
+}
+
+static std::string canonical_script_params_if_valid(const std::string &raw)
+{
+    try {
+        return canonical_scripted_plane_path_params(raw);
+    } catch (const std::invalid_argument &) {
+        return raw;
+    }
+}
 
 std::function<std::string(std::string, std::string)> ConfigBase::resolve_capability_fn = nullptr;
 
@@ -548,6 +570,9 @@ std::string ConfigBase::opt_serialize(const t_config_option_key &opt_key) const
 {
     const ConfigOption* opt = this->option(opt_key);
     assert(opt != nullptr);
+    if (is_scripted_plane_path_params_key(opt_key) && opt->type() == coString)
+        return escape_string_cstyle(canonical_script_params_if_valid(
+            static_cast<const ConfigOptionString *>(opt)->value));
     return opt->serialize();
 }
 
@@ -676,6 +701,11 @@ bool ConfigBase::set_deserialize_raw(const t_config_option_key &opt_key_src, con
             substituted = true;
 	    }
 	}
+
+    if (success && is_scripted_plane_path_params_key(opt_key) && opt->type() == coString) {
+        auto *script_params = static_cast<ConfigOptionString *>(opt);
+        script_params->value = canonical_script_params_if_valid(script_params->value);
+    }
 
     if (substituted && (substitutions_ctxt.rule == ForwardCompatibilitySubstitutionRule::Enable ||
                         substitutions_ctxt.rule == ForwardCompatibilitySubstitutionRule::EnableSystemSilent)) {
@@ -1559,7 +1589,9 @@ void ConfigBase::save_to_json(std::ostream &os, const std::string &name, const s
         if ( opt->is_scalar() ) {
             if (opt->type() == coString && (opt_key != "bed_custom_texture" && opt_key != "bed_custom_model"))
                 //keep \n, \r, \t
-                j[opt_key] = (dynamic_cast<const ConfigOptionString *>(opt))->value;
+                j[opt_key] = is_scripted_plane_path_params_key(opt_key)
+                    ? canonical_script_params_if_valid(static_cast<const ConfigOptionString *>(opt)->value)
+                    : static_cast<const ConfigOptionString *>(opt)->value;
             else
                 j[opt_key] = opt->serialize();
         }

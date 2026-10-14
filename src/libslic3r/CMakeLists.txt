@@ -149,6 +149,8 @@ set(lisbslic3r_sources
     Fill/FillBase.hpp
     Fill/FillPatternTraits.cpp
     Fill/FillPatternTraits.hpp
+    Fill/ScriptedPlanePathIdentity.hpp
+    Fill/SurfaceFillParams.hpp
     Fill/FillConcentric.cpp
     Fill/FillConcentric.hpp
     Fill/FillSpiralInset.cpp

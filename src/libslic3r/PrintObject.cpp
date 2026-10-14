@@ -3406,6 +3406,7 @@ void PrintObject::bridge_over_infill()
                 for (const CandidateSurface &candidate : surfaces_by_layer[lidx]) {
                     const auto &region_config = candidate.region->region().config();
                     const bool turning_pattern =
+                        region_config.sparse_infill_pattern != ipScriptedPlanePath &&
                         native_fill_pattern_traits(region_config.sparse_infill_pattern).bridge_anchor_policy == BridgeAnchorPolicy::Turning;
                     const Flow &flow              = candidate.region->bridging_flow(frSolidInfill, true);
                     Polygons    area_to_be_bridge = expand(candidate.new_polys, flow.scaled_spacing());

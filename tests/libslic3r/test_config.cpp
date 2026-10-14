@@ -16,6 +16,7 @@
 #include <nlohmann/json.hpp>
 
 #include <sstream>
+#include <array>
 
 using namespace Slic3r;
 
@@ -1461,4 +1462,126 @@ TEST_CASE("A static config applied onto a config of another type falls back to a
     REQUIRE_FALSE(region.apply_to(dynamic));
     dynamic.apply(region);
     CHECK(dynamic.opt_serialize("sparse_infill_pattern") == "gyroid");
+}
+
+
+// PP-004: preserve existing enum numbers while adding a single serialized sentinel.
+TEST_CASE("Scripted PlanePath sentinel is limited to solid contexts", "[Config][ScriptedPlanePath]")
+{
+    STATIC_REQUIRE(ipScriptedPlanePath == 31);
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    for (const char *key : {"top_surface_pattern", "bottom_surface_pattern", "internal_solid_infill_pattern"}) {
+        CHECK_NOTHROW(config.set_deserialize_strict(key, "scriptedplanepath"));
+        CHECK(config.opt_enum<InfillPattern>(key) == ipScriptedPlanePath);
+        CHECK(print_config_def.get(key)->has_enum_value("scriptedplanepath"));
+    }
+    for (const char *key : {"sparse_infill_pattern", "ironing_pattern", "support_ironing_pattern"})
+        CHECK_FALSE(print_config_def.get(key)->has_enum_value("scriptedplanepath"));
+    CHECK(config.opt_serialize("top_surface_pattern") == "scriptedplanepath");
+    CHECK(ConfigOptionEnum<InfillPattern>(ipHilbertCurve).serialize() == "hilbertcurve");
+    CHECK(ConfigOptionEnum<InfillPattern>(ipMonotonic).serialize() == "monotonic");
+    config.set_deserialize_strict("sparse_infill_pattern", "scriptedplanepath");
+    FullPrintConfig full;
+    full.apply(config);
+    CHECK(validate(full, true).count("sparse_infill_pattern") == 1);
+}
+
+TEST_CASE("Three scripted PlanePath contexts preserve independent config identity", "[Config][ScriptedPlanePath]")
+{
+    DynamicPrintConfig cfg = DynamicPrintConfig::full_print_config();
+    const std::array<std::pair<std::string,std::string>, 6> fields{{
+        {"top_surface_script_pattern", "org.example.moore"},
+        {"top_surface_script_params", R"({"a":1,"b":2})"},
+        {"bottom_surface_script_pattern", "org.example.peano"},
+        {"bottom_surface_script_params", R"({"order":5})"},
+        {"internal_solid_infill_script_pattern", "org.example.hilbert"},
+        {"internal_solid_infill_script_params", R"({"seed":7})"}
+    }};
+    for (const auto &field : fields) cfg.set(field.first, field.second);
+    cfg.set_deserialize_strict("top_surface_pattern", "scriptedplanepath");
+    cfg.set_deserialize_strict("bottom_surface_pattern", "scriptedplanepath");
+    cfg.set_deserialize_strict("internal_solid_infill_pattern", "scriptedplanepath");
+
+    FullPrintConfig full;
+    full.apply(cfg);
+    for (const auto &field : fields) {
+        const auto *full_option = full.option<ConfigOptionString>(field.first);
+        REQUIRE(full_option != nullptr);
+        CHECK(full_option->value == field.second);
+        CHECK(cfg.opt_string(field.first) == field.second);
+    }
+    CHECK(validate(full, true).count("top_surface_script_pattern") == 0);
+    CHECK(validate(full, true).count("bottom_surface_script_pattern") == 0);
+    CHECK(validate(full, true).count("internal_solid_infill_script_pattern") == 0);
+
+    DynamicPrintConfig clone(cfg);
+    CHECK(clone == cfg);
+    CHECK(clone.diff(cfg).empty());
+    clone.set("bottom_surface_script_pattern", std::string("org.example.changed"));
+    CHECK_FALSE(clone.diff(cfg).empty()); // Dirty state detects script changes.
+    clone.apply_only(cfg, {"bottom_surface_script_pattern"});
+    CHECK(clone.diff(cfg).empty()); // Reset restores exact initial state.
+    DynamicPrintConfig reload = DynamicPrintConfig::full_print_config();
+    for (const auto &field : fields)
+        reload.set_deserialize_strict(field.first, cfg.opt_serialize(field.first));
+    for (const char *key : {"top_surface_pattern", "bottom_surface_pattern", "internal_solid_infill_pattern"})
+        reload.set_deserialize_strict(key, cfg.opt_serialize(key));
+    CHECK(reload.diff(cfg).empty());
+
+    ScopedTemporaryFile tmp(".json");
+    cfg.save_to_json(tmp.string(), "scripted", "User", "1.0.0.0");
+    nlohmann::json json;
+    { boost::nowide::ifstream ifs(tmp.string()); ifs >> json; }
+    for (const auto &field : fields)
+        CHECK(json.at(field.first) == field.second);
+    DynamicPrintConfig from_preset = DynamicPrintConfig::full_print_config();
+    ConfigSubstitutionContext subs(ForwardCompatibilitySubstitutionRule::Disable);
+    std::map<std::string, std::string> values;
+    std::string reason;
+    REQUIRE(from_preset.load_from_json(tmp.string(), subs, true, values, reason) == 0);
+    CHECK(reason.empty());
+    for (const auto &field : fields)
+        CHECK(from_preset.opt_string(field.first) == cfg.opt_string(field.first));
+    for (const char *key : {"top_surface_pattern", "bottom_surface_pattern", "internal_solid_infill_pattern"})
+        CHECK(from_preset.opt_serialize(key) == cfg.opt_serialize(key));
+
+    // Bad active input fails explicitly; dormant native companions do not.
+    full.top_surface_script_params.value = R"({"bad":NaN})";
+    CHECK(validate(full, true).count("top_surface_script_params") == 1);
+    full.top_surface_pattern.value = ipMonotonicLine;
+    CHECK(validate(full, true).count("top_surface_script_params") == 0);
+    full.bottom_surface_script_pattern.value.clear();
+    CHECK(validate(full, true).count("bottom_surface_script_pattern") == 1);
+    full.bottom_surface_pattern.value = ipMonotonic;
+    CHECK(validate(full, true).count("bottom_surface_script_pattern") == 0);
+}
+
+
+TEST_CASE("Scripted PlanePath canonical parameters serialize identically through INI and JSON", "[Config][ScriptedPlanePath]")
+{
+    DynamicPrintConfig first, second;
+    first.set_key_value("top_surface_script_params", new ConfigOptionString(R"({"z":3,"a":{"y":2,"x":1}})"));
+    second.set_key_value("top_surface_script_params", new ConfigOptionString(R"({ "a": { "x": 1, "y": 2 }, "z": 3 })"));
+    const std::string canonical = R"({"a":{"x":1,"y":2},"z":3})";
+    CHECK(first.opt_serialize("top_surface_script_params") == second.opt_serialize("top_surface_script_params"));
+    DynamicPrintConfig parsed;
+    parsed.set_deserialize_strict("top_surface_script_params", first.opt_serialize("top_surface_script_params"));
+    CHECK(parsed.opt_string("top_surface_script_params") == canonical);
+    auto write = [](const DynamicPrintConfig &cfg) {
+        std::ostringstream stream;
+        cfg.save_to_json(stream, "script", "User", "1.0.0.0");
+        return nlohmann::json::parse(stream.str())["top_surface_script_params"];
+    };
+    CHECK(write(first) == canonical);
+    CHECK(write(second) == canonical);
+    CHECK(write(first) == write(second));
+
+    // Invalid dormant input is preserved, but rejected when actually selected.
+    first.set_key_value("top_surface_script_params", new ConfigOptionString("{bad"));
+    CHECK(first.opt_serialize("top_surface_script_params") == "{bad");
+    FullPrintConfig config;
+    config.top_surface_script_params.value = "{bad";
+    CHECK(validate(config, true).count("top_surface_script_params") == 0);
+    config.top_surface_pattern.value = ipScriptedPlanePath;
+    CHECK(validate(config, true).count("top_surface_script_params") == 1);
 }
