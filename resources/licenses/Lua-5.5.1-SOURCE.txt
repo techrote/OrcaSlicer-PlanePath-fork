@@ -1,0 +1,7 @@
+PlanePath embedded Lua runtime provenance
+Source: https://www.lua.org/ftp/lua-5.5.1.tar.gz
+Version: Lua 5.5.1
+SHA-256: 1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce
+Patch: upstream 0b29f408433e92953cc72b1d3e06c7ac8139e439
+Profile: 5.5.1-pp1
+Licence: MIT (see Lua-5.5.1.txt in this directory)

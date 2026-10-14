@@ -300,6 +300,15 @@ endif()
 
 endfunction(orcaslicer_add_cmake_project)
 
+# Focused pinned-Lua dependency validation can avoid configuring unrelated
+# graphics/CAD dependencies. Normal slicer builds always use the full graph.
+option(PLANEPATH_LUA_ONLY "Build only the pinned PlanePath Lua dependency" OFF)
+if (PLANEPATH_LUA_ONLY)
+    include(Lua/Lua.cmake)
+    add_custom_target(deps ALL DEPENDS dep_Lua)
+    return()
+endif()
+
 
 if (MSVC)
     if ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "AMD64")
@@ -402,6 +411,8 @@ include(CGAL/CGAL.cmake)
 
 include(NLopt/NLopt.cmake)
 include(libnoise/libnoise.cmake)
+# Pinned static Lua core for the PlanePath sandbox (PP-005).
+include(Lua/Lua.cmake)
 
 include(Draco/Draco.cmake)
 
@@ -490,6 +501,7 @@ set(_dep_list
     ${ZLIB_PKG}
     ${EXPAT_PKG}
     dep_libnoise
+    dep_Lua
     dep_python3
     dep_wxInspector
     dep_FFMPEG
