@@ -54,11 +54,23 @@ jobs:
         shell: bash
         run: |
           tar -xvf build_tests.tar
-          bash scripts/planepath/run-tests.sh "${{ inputs.test-dir }}" Release
+          # PlanePath: capture test output for the failure annotations below, and run the
+          # full suite even if the focused gate fails so one CI round reports everything.
+          rc=0
+          bash scripts/planepath/run-tests.sh "${{ inputs.test-dir }}" Release 2>&1 | tee unit-test-output.log || rc=$?
           # Every platform builds with a multi-config generator (build_linux.sh uses Ninja
           # Multi-Config), so ctest needs the config: without it, plain add_test() tests
           # lose their labels and report "Not Run".
-          scripts/run_unit_tests.sh "${{ inputs.test-dir }}" Release
+          scripts/run_unit_tests.sh "${{ inputs.test-dir }}" Release 2>&1 | tee -a unit-test-output.log || rc=$?
+          exit $rc
+      - name: Annotate Test Failures
+        # PlanePath: failing test names/assertions become check-run annotations, readable
+        # through the REST API by agents that cannot download job logs or artifacts.
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          py=$(command -v python3 || command -v python)
+          "$py" scripts/planepath/ci-annotate-failures.py unit-test-output.log
       - name: Upload Test Logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v7
